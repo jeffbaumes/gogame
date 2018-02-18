@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"math"
 	"runtime"
 	"time"
@@ -104,7 +103,6 @@ func main() {
 	projection := UniformLocation(program, "proj")
 
 	p := newPlanet(20.0, 70.0, 80, 30, 20, 15, 20)
-	log.Println(p.cartesianToCell(mgl32.Vec3{19.5, 0, 0}))
 	t := time.Now()
 	for !window.ShouldClose() {
 		h := float32(time.Since(t)) / float32(time.Second)
@@ -135,8 +133,17 @@ func draw(h float32, p *planet, window *glfw.Window, program uint32, projection 
 
 	// Update position
 	if cursorGrabbed {
+		feet := player.loc.Sub(normalDir.Mul(float32(player.height)))
+		feetCell := p.cartesianToCell(feet)
+		falling := feetCell == nil || feetCell.material == air
+		if falling {
+			player.fallVel -= 9.8 * h
+		} else {
+			player.fallVel = 0
+		}
 		player.loc = player.loc.Add(lookDir.Mul(player.forwardVel * h))
 		player.loc = player.loc.Add(normalDir.Mul(player.altVel * h))
+		player.loc = player.loc.Add(normalDir.Mul(player.fallVel * h))
 	}
 
 	glfw.PollEvents()

@@ -80,7 +80,11 @@ func (p *planet) generateCells() {
 				c := newCell(p, lonIndex, latIndex, altIndex)
 
 				height := (noise.Eval2(float64(lonIndex)/20.0, float64(latIndex)/20.0)+1.0)*float64(p.altMax-p.altMin)/2.0 + float64(p.altMin)
-				c.alive = float64(altIndex) <= height
+				if float64(altIndex) <= height {
+					c.material = rock
+				} else {
+					c.material = air
+				}
 
 				p.cells[lonIndex][latIndex] = append(p.cells[lonIndex][latIndex], c)
 			}
@@ -101,14 +105,29 @@ func (p *planet) draw() {
 func (p *planet) sphericalToIndex(r, theta, phi float32) (lonInd, latInd, altInd float32) {
 	altInd = r * float32(p.altCells) / float32(p.radius)
 	latInd = (180*theta/math.Pi - 90 + float32(p.latMax)) * float32(p.latCells) / (2 * float32(p.latMax))
+	if phi < 0 {
+		phi += 2 * math.Pi
+	}
 	lonInd = phi * float32(p.lonCells) / (2 * math.Pi)
 	return
 }
 
 func (p *planet) cartesianToCell(cart mgl32.Vec3) *cell {
 	r, theta, phi := mgl32.CartesianToSpherical(cart)
-	lonInd, latInd, altInd := p.sphericalToIndex(r, theta, phi)
-	return p.cells[int(lonInd)][int(latInd)][int(altInd)-p.altMin]
+	lon, lat, alt := p.sphericalToIndex(r, theta, phi)
+	lonInd := int(math.Floor(float64(lon)))
+	latInd := int(math.Floor(float64(lat)))
+	altInd := int(math.Floor(float64(alt)))
+	if lonInd >= len(p.cells) {
+		return nil
+	}
+	if latInd >= len(p.cells[lonInd]) || latInd < 0 {
+		return nil
+	}
+	if altInd-p.altMin >= len(p.cells[lonInd][latInd]) || altInd-p.altMin < 0 {
+		return nil
+	}
+	return p.cells[lonInd][latInd][altInd-p.altMin]
 }
 
 func (p *planet) indexToSpherical(lonInd, latInd, altInd float32) (r, theta, phi float32) {
@@ -120,8 +139,13 @@ func (p *planet) indexToSpherical(lonInd, latInd, altInd float32) (r, theta, phi
 
 type cell struct {
 	drawable uint32
-	alive    bool
+	material int
 }
+
+const (
+	air  = iota
+	rock = iota
+)
 
 func newCell(p *planet, lonIndex, latIndex, altIndex int) *cell {
 	points := make([]float32, len(square), len(square))
@@ -159,7 +183,7 @@ func newCell(p *planet, lonIndex, latIndex, altIndex int) *cell {
 }
 
 func (c *cell) draw() {
-	if !c.alive {
+	if c.material == air {
 		return
 	}
 
