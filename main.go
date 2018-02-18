@@ -16,6 +16,12 @@ const (
 	fps = 60
 )
 
+const (
+	normal       = iota
+	flying       = iota
+	numGameModes = iota
+)
+
 var (
 	noise         = opensimplex.NewWithSeed(0)
 	cursorGrabbed = false
@@ -52,13 +58,24 @@ func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action,
 	case glfw.Press:
 		switch key {
 		case glfw.KeySpace:
-			player.altVel = player.walkVel
+			if player.gameMode == normal {
+				player.holdingJump = true
+			} else {
+				player.altVel = player.walkVel
+			}
 		case glfw.KeyLeftShift:
-			player.altVel = -player.walkVel
+			if player.gameMode == flying {
+				player.altVel = -player.walkVel
+			}
 		case glfw.KeyW:
 			player.forwardVel = player.walkVel
 		case glfw.KeyS:
 			player.forwardVel = -player.walkVel
+		case glfw.KeyM:
+			player.gameMode++
+			if player.gameMode >= numGameModes {
+				player.gameMode = 0
+			}
 		case glfw.KeyEscape:
 			w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 			cursorGrabbed = false
@@ -66,6 +83,7 @@ func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action,
 	case glfw.Release:
 		switch key {
 		case glfw.KeySpace:
+			player.holdingJump = false
 			player.altVel = 0
 		case glfw.KeyLeftShift:
 			player.altVel = 0
@@ -133,17 +151,25 @@ func draw(h float32, p *planet, window *glfw.Window, program uint32, projection 
 
 	// Update position
 	if cursorGrabbed {
-		feet := player.loc.Sub(normalDir.Mul(float32(player.height)))
-		feetCell := p.cartesianToCell(feet)
-		falling := feetCell == nil || feetCell.material == air
-		if falling {
-			player.fallVel -= 9.8 * h
-		} else {
-			player.fallVel = 0
+		if player.gameMode == normal {
+			feet := player.loc.Sub(normalDir.Mul(float32(player.height)))
+			feetCell := p.cartesianToCell(feet)
+			falling := feetCell == nil || feetCell.material == air
+			if falling {
+				player.fallVel -= 9.8 * h
+			} else if player.holdingJump && !player.inJump {
+				player.fallVel = 10
+				player.inJump = true
+			} else {
+				player.fallVel = 0
+				player.inJump = false
+			}
+			player.loc = player.loc.Add(normalDir.Mul(player.fallVel * h))
+		}
+		if player.gameMode == flying {
+			player.loc = player.loc.Add(normalDir.Mul(player.altVel * h))
 		}
 		player.loc = player.loc.Add(lookDir.Mul(player.forwardVel * h))
-		player.loc = player.loc.Add(normalDir.Mul(player.altVel * h))
-		player.loc = player.loc.Add(normalDir.Mul(player.fallVel * h))
 	}
 
 	glfw.PollEvents()
