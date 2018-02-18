@@ -98,6 +98,26 @@ func (p *planet) draw() {
 	}
 }
 
+func (p *planet) sphericalToIndex(r, theta, phi float32) (lonInd, latInd, altInd float32) {
+	altInd = r * float32(p.altCells) / float32(p.radius)
+	latInd = (180*theta/math.Pi - 90 + float32(p.latMax)) * float32(p.latCells) / (2 * float32(p.latMax))
+	lonInd = phi * float32(p.lonCells) / (2 * math.Pi)
+	return
+}
+
+func (p *planet) cartesianToCell(cart mgl32.Vec3) *cell {
+	r, theta, phi := mgl32.CartesianToSpherical(cart)
+	lonInd, latInd, altInd := p.sphericalToIndex(r, theta, phi)
+	return p.cells[int(lonInd)][int(latInd)][int(altInd)-p.altMin]
+}
+
+func (p *planet) indexToSpherical(lonInd, latInd, altInd float32) (r, theta, phi float32) {
+	r = float32(p.radius) * altInd / float32(p.altCells)
+	theta = (math.Pi / 180) * ((90.0 - float32(p.latMax)) + (latInd/float32(p.latCells))*(2.0*float32(p.latMax)))
+	phi = 2 * math.Pi * lonInd / float32(p.lonCells)
+	return
+}
+
 type cell struct {
 	drawable uint32
 	alive    bool
@@ -108,19 +128,12 @@ func newCell(p *planet, lonIndex, latIndex, altIndex int) *cell {
 	copy(points, square)
 	n := make([]float32, len(square), len(square))
 
-	IndexToSpherical := func(lonInd, latInd, altInd float64) mgl32.Vec3 {
-		r := float32(p.radius * altInd / float64(p.altCells))
-		theta := float32(math.Pi*((90.0-p.latMax)+(latInd/float64(p.latCells))*(2.0*p.latMax))) / 180.0
-		phi := float32(2.0 * math.Pi * lonInd / float64(p.lonCells))
-		return mgl32.Vec3{r, theta, phi}
-	}
-
 	for i := 0; i < len(points); i += 3 {
-		lonVal := float64(lonIndex) + float64(points[i])
-		latVal := float64(latIndex) + float64(points[i+1])
-		altVal := float64(altIndex) + float64(points[i+2])
-		sphr := IndexToSpherical(lonVal, latVal, altVal)
-		cart := mgl32.SphericalToCartesian(sphr[0], sphr[1], sphr[2])
+		lonVal := float32(lonIndex) + points[i]
+		latVal := float32(latIndex) + points[i+1]
+		altVal := float32(altIndex) + points[i+2]
+		r, theta, phi := p.indexToSpherical(lonVal, latVal, altVal)
+		cart := mgl32.SphericalToCartesian(r, theta, phi)
 		points[i] = cart[0]
 		points[i+1] = cart[1]
 		points[i+2] = cart[2]

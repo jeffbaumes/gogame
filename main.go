@@ -80,7 +80,6 @@ func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action,
 
 func windowSizeCallback(w *glfw.Window, width, height int) {
 	aspectRatio = float32(width) / float32(height)
-	log.Println(aspectRatio)
 }
 
 func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
@@ -104,7 +103,8 @@ func main() {
 	program := InitOpenGL()
 	projection := UniformLocation(program, "proj")
 
-	p := newPlanet(20.0, 70.0, 80, 30, 16, 15, 20)
+	p := newPlanet(20.0, 70.0, 80, 30, 20, 15, 20)
+	log.Println(p.cartesianToCell(mgl32.Vec3{19.5, 0, 0}))
 	t := time.Now()
 	for !window.ShouldClose() {
 		h := float32(time.Since(t)) / float32(time.Second)
