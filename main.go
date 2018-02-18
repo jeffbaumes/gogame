@@ -97,6 +97,7 @@ func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action,
 
 func windowSizeCallback(w *glfw.Window, width, height int) {
 	aspectRatio = float32(width) / float32(height)
+	gl.Viewport(0, 0, int32(width), int32(height))
 }
 
 func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
