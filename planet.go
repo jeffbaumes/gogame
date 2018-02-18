@@ -102,19 +102,7 @@ func (p *planet) draw() {
 	}
 }
 
-func (p *planet) sphericalToIndex(r, theta, phi float32) (lonInd, latInd, altInd float32) {
-	altInd = r * float32(p.altCells) / float32(p.radius)
-	latInd = (180*theta/math.Pi - 90 + float32(p.latMax)) * float32(p.latCells) / (2 * float32(p.latMax))
-	if phi < 0 {
-		phi += 2 * math.Pi
-	}
-	lonInd = phi * float32(p.lonCells) / (2 * math.Pi)
-	return
-}
-
-func (p *planet) cartesianToCell(cart mgl32.Vec3) *cell {
-	r, theta, phi := mgl32.CartesianToSpherical(cart)
-	lon, lat, alt := p.sphericalToIndex(r, theta, phi)
+func (p *planet) indexToCell(lon, lat, alt float32) *cell {
 	lonInd := int(math.Floor(float64(lon)))
 	latInd := int(math.Floor(float64(lat)))
 	altInd := int(math.Floor(float64(alt)))
@@ -128,6 +116,28 @@ func (p *planet) cartesianToCell(cart mgl32.Vec3) *cell {
 		return nil
 	}
 	return p.cells[lonInd][latInd][altInd-p.altMin]
+}
+
+func (p *planet) sphericalToIndex(r, theta, phi float32) (lon, lat, alt float32) {
+	alt = r * float32(p.altCells) / float32(p.radius)
+	lat = (180*theta/math.Pi - 90 + float32(p.latMax)) * float32(p.latCells) / (2 * float32(p.latMax))
+	if phi < 0 {
+		phi += 2 * math.Pi
+	}
+	lon = phi * float32(p.lonCells) / (2 * math.Pi)
+	return
+}
+
+func (p *planet) cartesianToCell(cart mgl32.Vec3) *cell {
+	r, theta, phi := mgl32.CartesianToSpherical(cart)
+	lon, lat, alt := p.sphericalToIndex(r, theta, phi)
+	return p.indexToCell(lon, lat, alt)
+}
+
+func (p *planet) cartesianToIndex(cart mgl32.Vec3) (lon, lat, alt float32) {
+	r, theta, phi := mgl32.CartesianToSpherical(cart)
+	lon, lat, alt = p.sphericalToIndex(r, theta, phi)
+	return
 }
 
 func (p *planet) indexToSpherical(lonInd, latInd, altInd float32) (r, theta, phi float32) {

@@ -156,12 +156,13 @@ func draw(h float32, p *planet, window *glfw.Window, program uint32, projection 
 	if cursorGrabbed {
 		if player.gameMode == normal {
 			feet := player.loc.Sub(normalDir.Mul(float32(player.height)))
+			// feetLon, feetLat, feetAlt := p.cartesianToIndex(feet)
 			feetCell := p.cartesianToCell(feet)
 			falling := feetCell == nil || feetCell.material == air
 			if falling {
 				player.fallVel -= 9.8 * h
 			} else if player.holdingJump && !player.inJump {
-				player.fallVel = 10
+				player.fallVel = 5
 				player.inJump = true
 			} else {
 				player.fallVel = 0
