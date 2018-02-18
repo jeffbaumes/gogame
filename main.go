@@ -139,9 +139,11 @@ func draw(h float32, p *planet, window *glfw.Window, program uint32, projection 
 	normalDir := player.loc.Normalize()
 
 	// To project vector to plane, subtract vector projected to normal
-	forward := player.lookHeading.Sub(normalDir.Mul(player.lookHeading.Dot(normalDir))).Normalize()
+	player.lookHeading = player.lookHeading.Sub(normalDir.Mul(player.lookHeading.Dot(normalDir))).Normalize()
 
-	lookDir := mgl32.QuatRotate(float32((player.lookAltitude-90.0)*math.Pi/180.0), forward).Rotate(normalDir)
+	right := player.lookHeading.Cross(normalDir)
+
+	lookDir := mgl32.QuatRotate(float32((player.lookAltitude-90.0)*math.Pi/180.0), right).Rotate(normalDir)
 	view := mgl32.LookAtV(player.loc, player.loc.Add(lookDir), player.loc.Normalize())
 	perspective := mgl32.Perspective(45, aspectRatio, 0.01, 100)
 	proj := perspective.Mul4(view)
@@ -165,11 +167,12 @@ func draw(h float32, p *planet, window *glfw.Window, program uint32, projection 
 				player.inJump = false
 			}
 			player.loc = player.loc.Add(normalDir.Mul(player.fallVel * h))
+			player.loc = player.loc.Add(player.lookHeading.Mul(player.forwardVel * h))
 		}
 		if player.gameMode == flying {
 			player.loc = player.loc.Add(normalDir.Mul(player.altVel * h))
+			player.loc = player.loc.Add(lookDir.Mul(player.forwardVel * h))
 		}
-		player.loc = player.loc.Add(lookDir.Mul(player.forwardVel * h))
 	}
 
 	glfw.PollEvents()
