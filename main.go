@@ -202,24 +202,6 @@ func draw(h float32, p *planet, window *glfw.Window, program uint32, projection 
 		player.loc = player.loc.Add(playerVel.Mul(h))
 		cellHeight := p.radius / float64(p.altCells)
 		for height := 0.5; height < player.height; height += cellHeight {
-			// pos := player.loc.Sub(normalDir.Mul(float32(player.height - height)))
-			// lon, lat, alt := p.cartesianToIndex(pos)
-			// cLon := float32(math.Floor(float64(lon) + 0.5))
-			// cLat := float32(math.Floor(float64(lat) + 0.5))
-			// cAlt := float32(math.Floor(float64(alt) + 0.5))
-			// adjCell := p.indexToCell(cLon, cLat, cAlt+1)
-			// if adjCell != nil && adjCell.material != air {
-			// 	nLoc := p.indexToCartesian(cLon, cLat, cAlt+0.5)
-			// 	// aLoc := p.indexToCartesian(cLon, cLat, cAlt+1)
-			// 	// cNorm := nLoc.Sub(aLoc).Normalize()
-			// 	// cNorm = cNorm.Sub(project(cNorm, normalDir)).Normalize()
-			// 	distToPlane := normalDir.Dot(pos.Sub(nLoc))
-			// 	log.Println(distToPlane)
-			// 	if distToPlane < 0 {
-			// 		move := -distToPlane
-			// 		player.loc = player.loc.Add(normalDir.Mul(move))
-			// 	}
-			// }
 			pos := player.loc.Sub(normalDir.Mul(float32(player.height - height)))
 			lon, lat, alt := p.cartesianToIndex(pos)
 			cLon := float32(math.Floor(float64(lon) + 0.5))
@@ -228,9 +210,6 @@ func draw(h float32, p *planet, window *glfw.Window, program uint32, projection 
 			adjCell := p.indexToCell(cLon, cLat, cAlt-1)
 			if adjCell != nil && adjCell.material != air {
 				nLoc := p.indexToCartesian(cLon, cLat, cAlt-0.5)
-				// aLoc := p.indexToCartesian(cLon, cLat, cAlt-1)
-				// cNorm := nLoc.Sub(aLoc).Normalize()
-				// cNorm = cNorm.Sub(project(cNorm, normalDir)).Normalize()
 				distToPlane := normalDir.Dot(pos.Sub(nLoc))
 				if distToPlane < 0 {
 					move := -distToPlane
@@ -306,49 +285,6 @@ func draw(h float32, p *planet, window *glfw.Window, program uint32, projection 
 				}
 			}
 		}
-
-		// Land on the ground
-		// const numCirclePts = 4
-		// for circleIndex := 0; circleIndex < numCirclePts; circleIndex++ {
-		// 	angle := float64(circleIndex) / float64(numCirclePts) * 2 * math.Pi
-		// 	feetEdge = feet.Add(player.lookHeading.Mul(float32(math.Sin(angle) * player.radius))).Add(right.Mul(float32(math.Cos(angle) * player.radius)))
-		// 	feetCell := p.cartesianToCell(feetEdge)
-		// 	if !player.inJump && feetCell != nil && feetCell.material != air {
-		// 		player.fallVel = 0
-		// 		collisionNormal, separation := p.nearestCellNormal(feet.Add(playerVel.Mul(h)))
-		// 		const slop = -0.02
-		// 		if separation < slop {
-		// 			correctiveVel := collisionNormal.Mul(-(separation - slop) / h)
-		// 			playerVel = playerVel.Add(correctiveVel)
-		// 		}
-		// 	}
-		// }
-
-		// Stop at wall
-		// for circleIndex := 0; circleIndex < numCirclePts; circleIndex++ {
-		// 	knee := player.loc.Sub(normalDir.Mul(float32(player.height * 0.75)))
-		// 	angle := float64(circleIndex) / float64(numCirclePts) * 2 * math.Pi
-		// 	knee = knee.Add(player.lookHeading.Mul(float32(math.Sin(angle) * player.radius))).Add(right.Mul(float32(math.Cos(angle) * player.radius)))
-		// 	kneeCell := p.cartesianToCell(knee)
-		// 	if kneeCell != nil && kneeCell.material != air {
-		// 		collisionNormal, separation := p.nearestCellNormal(knee.Add(playerVel.Mul(h)))
-		// 		// See http://twvideo01.ubm-us.net/o1/vault/gdc09/slides/04-GDC09_Catto_Erin_Solver.pdf
-		// 		// Slide "Preventing Overshoot"
-		// 		const slop = -0.02
-		// 		if separation < slop {
-		// 			correctiveVel := collisionNormal.Mul(-(separation - slop) / h)
-		// 			// Don't slowly go up the wall
-		// 			correctiveVel = correctiveVel.Sub(project(correctiveVel, normalDir))
-		// 			if playerVel.Len() > 0 {
-		// 				// log.Println(playerVel)
-		// 				// log.Println(correctiveVel)
-		// 				// log.Println(separation)
-		// 			}
-		// 			playerVel = playerVel.Add(correctiveVel)
-		// 		}
-		// 	}
-		// }
-		// player.loc = player.loc.Add(playerVel.Mul(h))
 	} else if player.gameMode == flying {
 		player.loc = player.loc.Add(normalDir.Mul((player.upVel - player.downVel) * h))
 		player.loc = player.loc.Add(lookDir.Mul((player.forwardVel - player.backVel) * h))
