@@ -103,10 +103,10 @@ func (p *planet) draw() {
 }
 
 func (p *planet) indexToCell(lon, lat, alt float32) *cell {
-	lonInd := int(math.Floor(float64(lon)))
-	latInd := int(math.Floor(float64(lat)))
-	altInd := int(math.Floor(float64(alt)))
-	if lonInd >= len(p.cells) {
+	lonInd := int(math.Floor(float64(lon) + 0.5))
+	latInd := int(math.Floor(float64(lat) + 0.5))
+	altInd := int(math.Floor(float64(alt) + 0.5))
+	if lonInd >= len(p.cells) || lonInd < 0 {
 		return nil
 	}
 	if latInd >= len(p.cells[lonInd]) || latInd < 0 {
@@ -129,6 +129,7 @@ func (p *planet) sphericalToIndex(r, theta, phi float32) (lon, lat, alt float32)
 }
 
 func (p *planet) cartesianToCell(cart mgl32.Vec3) *cell {
+	// log.Println(cart)
 	r, theta, phi := mgl32.CartesianToSpherical(cart)
 	lon, lat, alt := p.sphericalToIndex(r, theta, phi)
 	return p.indexToCell(lon, lat, alt)
@@ -140,10 +141,58 @@ func (p *planet) cartesianToIndex(cart mgl32.Vec3) (lon, lat, alt float32) {
 	return
 }
 
-func (p *planet) indexToSpherical(lonInd, latInd, altInd float32) (r, theta, phi float32) {
-	r = float32(p.radius) * altInd / float32(p.altCells)
-	theta = (math.Pi / 180) * ((90.0 - float32(p.latMax)) + (latInd/float32(p.latCells))*(2.0*float32(p.latMax)))
-	phi = 2 * math.Pi * lonInd / float32(p.lonCells)
+func (p *planet) indexToCartesian(lon, lat, alt float32) mgl32.Vec3 {
+	r, theta, phi := p.indexToSpherical(lon, lat, alt)
+	return mgl32.SphericalToCartesian(r, theta, phi)
+}
+
+func (p *planet) indexToSpherical(lon, lat, alt float32) (r, theta, phi float32) {
+	r = float32(p.radius) * alt / float32(p.altCells)
+	theta = (math.Pi / 180) * ((90.0 - float32(p.latMax)) + (lat/float32(p.latCells))*(2.0*float32(p.latMax)))
+	phi = 2 * math.Pi * lon / float32(p.lonCells)
+	return
+}
+
+func (p *planet) nearestCellNormal(cart mgl32.Vec3) (normal mgl32.Vec3, separation float32) {
+	lon, lat, alt := p.cartesianToIndex(cart)
+	cLon := math.Floor(float64(lon) + 0.5)
+	cLat := math.Floor(float64(lat) + 0.5)
+	cAlt := math.Floor(float64(alt) + 0.5)
+	dLon := float64(lon) - cLon
+	dLat := float64(lat) - cLat
+	dAlt := float64(alt) - cAlt
+	nLon, nLat, nAlt := cLon, cLat, cAlt
+	if math.Abs(dLon) > math.Abs(dLat) && math.Abs(dLon) > math.Abs(dAlt) {
+		if dLon > 0 {
+			nLon = cLon + 0.5
+		} else {
+			nLon = cLon - 0.5
+		}
+	} else if math.Abs(dLat) > math.Abs(dAlt) {
+		if dLat > 0 {
+			nLat = cLat + 0.5
+		} else {
+			nLat = cLat - 0.5
+		}
+	} else {
+		if dAlt > 0 {
+			nAlt = cAlt + 0.5
+		} else {
+			nAlt = cAlt - 0.5
+		}
+	}
+	// log.Println(lon, lat, alt)
+	// log.Println(dLon, dLat, dAlt)
+	// log.Println(cLon, cLat, cAlt)
+	// log.Println(nLon, nLat, nAlt)
+	nLoc := p.indexToCartesian(float32(nLon), float32(nLat), float32(nAlt))
+	// log.Println(nLoc)
+	cLoc := p.indexToCartesian(float32(cLon), float32(cLat), float32(cAlt))
+	// log.Println(cLoc)
+	// log.Println(nLoc.Sub(cLoc).Normalize())
+	normal = nLoc.Sub(cLoc).Normalize()
+	// separation = -project(cart.Sub(nLoc), normal).Len()
+	separation = normal.Dot(cart.Sub(nLoc))
 	return
 }
 
@@ -199,4 +248,5 @@ func (c *cell) draw() {
 
 	gl.BindVertexArray(c.drawable)
 	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(square)/3))
+	// gl.DrawArrays(gl.LINES, 0, int32(len(square)/3))
 }

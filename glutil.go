@@ -75,6 +75,8 @@ func InitOpenGL() uint32 {
 	log.Println("OpenGL version", version)
 
 	gl.Enable(gl.DEPTH_TEST)
+	// gl.Enable(gl.POLYGON_OFFSET_FILL)
+	// gl.PolygonOffset(2, 0)
 
 	vertexShader, err := compileShader(vertexShaderSource, gl.VERTEX_SHADER)
 	if err != nil {
