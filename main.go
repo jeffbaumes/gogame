@@ -26,6 +26,7 @@ var (
 	noise         = opensimplex.NewWithSeed(0)
 	cursorGrabbed = false
 	player        = newPerson()
+	p             *planet
 	aspectRatio   = float32(1.0)
 	lastCursor    = mgl64.Vec2{math.NaN(), math.NaN()}
 	g             = 9.8
@@ -110,9 +111,24 @@ func windowSizeCallback(w *glfw.Window, width, height int) {
 }
 
 func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
-	if !cursorGrabbed && action == glfw.Press {
-		w.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
-		cursorGrabbed = true
+	if cursorGrabbed {
+		if action == glfw.Press {
+			lookDir := player.lookDir()
+			pos := player.loc
+			for i := 0; i < 100; i++ {
+				pos = pos.Add(lookDir.Mul(0.1))
+				cell := p.cartesianToCell(pos)
+				if cell != nil && cell.material != air {
+					cell.material = air
+					break
+				}
+			}
+		}
+	} else {
+		if action == glfw.Press {
+			w.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
+			cursorGrabbed = true
+		}
 	}
 }
 
@@ -130,13 +146,13 @@ func main() {
 	program := InitOpenGL()
 	projection := UniformLocation(program, "proj")
 
-	p := newPlanet(20.0, 70.0, 80, 60, 20, 15, 20)
+	p = newPlanet(20.0, 70.0, 80, 60, 20, 15, 20)
 	t := time.Now()
 	for !window.ShouldClose() {
 		h := float32(time.Since(t)) / float32(time.Second)
 		t = time.Now()
 
-		draw(h, p, window, program, projection)
+		draw(h, window, program, projection)
 
 		time.Sleep(time.Second/time.Duration(fps) - time.Since(t))
 	}
@@ -155,17 +171,11 @@ func projectToPlane(v mgl32.Vec3, n mgl32.Vec3) mgl32.Vec3 {
 	return v.Sub(project(v, n))
 }
 
-func draw(h float32, p *planet, window *glfw.Window, program uint32, projection int32) {
+func draw(h float32, window *glfw.Window, program uint32, projection int32) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.UseProgram(program)
 
-	normalDir := player.loc.Normalize()
-
-	player.lookHeading = projectToPlane(player.lookHeading, normalDir).Normalize()
-
-	right := player.lookHeading.Cross(normalDir)
-
-	lookDir := mgl32.QuatRotate(float32((player.lookAltitude-90.0)*math.Pi/180.0), right).Rotate(normalDir)
+	lookDir := player.lookDir()
 	view := mgl32.LookAtV(player.loc, player.loc.Add(lookDir), player.loc.Normalize())
 	perspective := mgl32.Perspective(45, aspectRatio, 0.01, 100)
 	proj := perspective.Mul4(view)
@@ -180,8 +190,10 @@ func draw(h float32, p *planet, window *glfw.Window, program uint32, projection 
 	}
 
 	// Update position
+	up := player.loc.Normalize()
+	right := player.lookHeading.Cross(up)
 	if player.gameMode == normal {
-		feet := player.loc.Sub(normalDir.Mul(float32(player.height)))
+		feet := player.loc.Sub(up.Mul(float32(player.height)))
 		feetCell := p.cartesianToCell(feet)
 		falling := feetCell == nil || feetCell.material == air
 		if falling {
@@ -195,98 +207,21 @@ func draw(h float32, p *planet, window *glfw.Window, program uint32, projection 
 		}
 
 		playerVel := mgl32.Vec3{}
-		playerVel = playerVel.Add(normalDir.Mul(player.fallVel))
+		playerVel = playerVel.Add(up.Mul(player.fallVel))
 		playerVel = playerVel.Add(player.lookHeading.Mul((player.forwardVel - player.backVel)))
 		playerVel = playerVel.Add(right.Mul((player.rightVel - player.leftVel)))
 
 		player.loc = player.loc.Add(playerVel.Mul(h))
 		cellHeight := p.radius / float64(p.altCells)
-		for height := 0.5; height < player.height; height += cellHeight {
-			pos := player.loc.Sub(normalDir.Mul(float32(player.height - height)))
-			lon, lat, alt := p.cartesianToIndex(pos)
-			cLon := float32(math.Floor(float64(lon) + 0.5))
-			cLat := float32(math.Floor(float64(lat) + 0.5))
-			cAlt := float32(math.Floor(float64(alt) + 0.5))
-			adjCell := p.indexToCell(cLon, cLat, cAlt-1)
-			if adjCell != nil && adjCell.material != air {
-				nLoc := p.indexToCartesian(cLon, cLat, cAlt-0.5)
-				distToPlane := normalDir.Dot(pos.Sub(nLoc))
-				if distToPlane < 0 {
-					move := -distToPlane
-					player.loc = player.loc.Add(normalDir.Mul(move))
-				}
-			}
-			pos = player.loc.Sub(normalDir.Mul(float32(player.height - height)))
-			lon, lat, alt = p.cartesianToIndex(pos)
-			cLon = float32(math.Floor(float64(lon) + 0.5))
-			cLat = float32(math.Floor(float64(lat) + 0.5))
-			cAlt = float32(math.Floor(float64(alt) + 0.5))
-			adjCell = p.indexToCell(cLon+1, cLat, cAlt)
-			if adjCell != nil && adjCell.material != air {
-				nLoc := p.indexToCartesian(cLon+0.5, cLat, cAlt)
-				aLoc := p.indexToCartesian(cLon+1, cLat, cAlt)
-				cNorm := nLoc.Sub(aLoc).Normalize()
-				cNorm = cNorm.Sub(project(cNorm, normalDir)).Normalize()
-				distToPlane := cNorm.Dot(pos.Sub(nLoc))
-				if distToPlane < float32(player.radius) {
-					move := float32(player.radius) - distToPlane
-					player.loc = player.loc.Add(cNorm.Mul(move))
-				}
-			}
-			pos = player.loc.Sub(normalDir.Mul(float32(player.height - height)))
-			lon, lat, alt = p.cartesianToIndex(pos)
-			cLon = float32(math.Floor(float64(lon) + 0.5))
-			cLat = float32(math.Floor(float64(lat) + 0.5))
-			cAlt = float32(math.Floor(float64(alt) + 0.5))
-			adjCell = p.indexToCell(cLon-1, cLat, cAlt)
-			if adjCell != nil && adjCell.material != air {
-				nLoc := p.indexToCartesian(cLon-0.5, cLat, cAlt)
-				aLoc := p.indexToCartesian(cLon-1, cLat, cAlt)
-				cNorm := nLoc.Sub(aLoc).Normalize()
-				cNorm = cNorm.Sub(project(cNorm, normalDir)).Normalize()
-				distToPlane := cNorm.Dot(pos.Sub(nLoc))
-				if distToPlane < float32(player.radius) {
-					move := float32(player.radius) - distToPlane
-					player.loc = player.loc.Add(cNorm.Mul(move))
-				}
-			}
-			pos = player.loc.Sub(normalDir.Mul(float32(player.height - height)))
-			lon, lat, alt = p.cartesianToIndex(pos)
-			cLon = float32(math.Floor(float64(lon) + 0.5))
-			cLat = float32(math.Floor(float64(lat) + 0.5))
-			cAlt = float32(math.Floor(float64(alt) + 0.5))
-			adjCell = p.indexToCell(cLon, cLat+1, cAlt)
-			if adjCell != nil && adjCell.material != air {
-				nLoc := p.indexToCartesian(cLon, cLat+0.5, cAlt)
-				aLoc := p.indexToCartesian(cLon, cLat+1, cAlt)
-				cNorm := nLoc.Sub(aLoc).Normalize()
-				cNorm = cNorm.Sub(project(cNorm, normalDir)).Normalize()
-				distToPlane := cNorm.Dot(pos.Sub(nLoc))
-				if distToPlane < float32(player.radius) {
-					move := float32(player.radius) - distToPlane
-					player.loc = player.loc.Add(cNorm.Mul(move))
-				}
-			}
-			pos = player.loc.Sub(normalDir.Mul(float32(player.height - height)))
-			lon, lat, alt = p.cartesianToIndex(pos)
-			cLon = float32(math.Floor(float64(lon) + 0.5))
-			cLat = float32(math.Floor(float64(lat) + 0.5))
-			cAlt = float32(math.Floor(float64(alt) + 0.5))
-			adjCell = p.indexToCell(cLon, cLat-1, cAlt)
-			if adjCell != nil && adjCell.material != air {
-				nLoc := p.indexToCartesian(cLon, cLat-0.5, cAlt)
-				aLoc := p.indexToCartesian(cLon, cLat-1, cAlt)
-				cNorm := nLoc.Sub(aLoc).Normalize()
-				cNorm = cNorm.Sub(project(cNorm, normalDir)).Normalize()
-				distToPlane := cNorm.Dot(pos.Sub(nLoc))
-				if distToPlane < float32(player.radius) {
-					move := float32(player.radius) - distToPlane
-					player.loc = player.loc.Add(cNorm.Mul(move))
-				}
-			}
+		for height := cellHeight / 2; height < player.height; height += cellHeight {
+			player.collide(p, float32(height), 0, 0, -1)
+			player.collide(p, float32(height), 1, 0, 0)
+			player.collide(p, float32(height), -1, 0, 0)
+			player.collide(p, float32(height), 0, 1, 0)
+			player.collide(p, float32(height), 0, -1, 0)
 		}
 	} else if player.gameMode == flying {
-		player.loc = player.loc.Add(normalDir.Mul((player.upVel - player.downVel) * h))
+		player.loc = player.loc.Add(up.Mul((player.upVel - player.downVel) * h))
 		player.loc = player.loc.Add(lookDir.Mul((player.forwardVel - player.backVel) * h))
 		player.loc = player.loc.Add(right.Mul((player.rightVel - player.leftVel) * h))
 	}

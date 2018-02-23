@@ -105,10 +105,18 @@ func (p *planet) draw() {
 	}
 }
 
+func (p *planet) indexToCellCenterIndex(lon, lat, alt float32) (cLon, cLat, cAlt float32) {
+	cLon = float32(math.Floor(float64(lon) + 0.5))
+	cLat = float32(math.Floor(float64(lat) + 0.5))
+	cAlt = float32(math.Floor(float64(alt) + 0.5))
+	return
+}
+
 func (p *planet) indexToCell(lon, lat, alt float32) *cell {
-	lonInd := int(math.Floor(float64(lon) + 0.5))
-	latInd := int(math.Floor(float64(lat) + 0.5))
-	altInd := int(math.Floor(float64(alt) + 0.5))
+	cLon, cLat, cAlt := p.indexToCellCenterIndex(lon, lat, alt)
+	lonInd := int(cLon)
+	latInd := int(cLat)
+	altInd := int(cAlt)
 	if lonInd >= len(p.cells) || lonInd < 0 {
 		return nil
 	}
@@ -158,12 +166,10 @@ func (p *planet) indexToSpherical(lon, lat, alt float32) (r, theta, phi float32)
 
 func (p *planet) nearestCellNormal(cart mgl32.Vec3) (normal mgl32.Vec3, separation float32) {
 	lon, lat, alt := p.cartesianToIndex(cart)
-	cLon := math.Floor(float64(lon) + 0.5)
-	cLat := math.Floor(float64(lat) + 0.5)
-	cAlt := math.Floor(float64(alt) + 0.5)
-	dLon := float64(lon) - cLon
-	dLat := float64(lat) - cLat
-	dAlt := float64(alt) - cAlt
+	cLon, cLat, cAlt := p.indexToCellCenterIndex(lon, lat, alt)
+	dLon := float64(lon - cLon)
+	dLat := float64(lat - cLat)
+	dAlt := float64(alt - cAlt)
 	nLon, nLat, nAlt := cLon, cLat, cAlt
 	if math.Abs(dLon) > math.Abs(dLat) && math.Abs(dLon) > math.Abs(dAlt) {
 		if dLon > 0 {
@@ -184,17 +190,9 @@ func (p *planet) nearestCellNormal(cart mgl32.Vec3) (normal mgl32.Vec3, separati
 			nAlt = cAlt - 0.5
 		}
 	}
-	// log.Println(lon, lat, alt)
-	// log.Println(dLon, dLat, dAlt)
-	// log.Println(cLon, cLat, cAlt)
-	// log.Println(nLon, nLat, nAlt)
 	nLoc := p.indexToCartesian(float32(nLon), float32(nLat), float32(nAlt))
-	// log.Println(nLoc)
 	cLoc := p.indexToCartesian(float32(cLon), float32(cLat), float32(cAlt))
-	// log.Println(cLoc)
-	// log.Println(nLoc.Sub(cLoc).Normalize())
 	normal = nLoc.Sub(cLoc).Normalize()
-	// separation = -project(cart.Sub(nLoc), normal).Len()
 	separation = normal.Dot(cart.Sub(nLoc))
 	return
 }
