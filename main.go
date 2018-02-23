@@ -130,7 +130,7 @@ func main() {
 	program := InitOpenGL()
 	projection := UniformLocation(program, "proj")
 
-	p := newPlanet(40.0, 70.0, 160, 60, 40, 35, 40)
+	p := newPlanet(20.0, 70.0, 80, 60, 20, 15, 20)
 	t := time.Now()
 	for !window.ShouldClose() {
 		h := float32(time.Since(t)) / float32(time.Second)

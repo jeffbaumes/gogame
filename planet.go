@@ -79,7 +79,10 @@ func (p *planet) generateCells() {
 			for altIndex := p.altMin; altIndex <= p.altMax; altIndex++ {
 				c := newCell(p, lonIndex, latIndex, altIndex)
 
-				height := (noise.Eval2(float64(lonIndex)/20.0, float64(latIndex)/20.0)+1.0)*float64(p.altMax-p.altMin)/2.0 + float64(p.altMin)
+				pos := p.indexToCartesian(float32(lonIndex), float32(latIndex), float32(altIndex))
+				const scale = 0.1
+				height := (noise.Eval3(float64(pos[0])*scale, float64(pos[1])*scale, float64(pos[2])*scale)+1.0)*float64(p.altMax-p.altMin)/2.0 + float64(p.altMin)
+				// height := (noise.Eval2(float64(lonIndex)/20.0, float64(latIndex)/20.0)+1.0)*float64(p.altMax-p.altMin)/2.0 + float64(p.altMin)
 				if float64(altIndex) <= height {
 					c.material = rock
 				} else {
