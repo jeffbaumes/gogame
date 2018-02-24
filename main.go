@@ -112,15 +112,33 @@ func windowSizeCallback(w *glfw.Window, width, height int) {
 
 func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
 	if cursorGrabbed {
-		if action == glfw.Press {
-			lookDir := player.lookDir()
+		if action == glfw.Press && button == glfw.MouseButtonLeft {
+			increment := player.lookDir().Mul(0.05)
 			pos := player.loc
 			for i := 0; i < 100; i++ {
-				pos = pos.Add(lookDir.Mul(0.1))
+				pos = pos.Add(increment)
 				cell := p.cartesianToCell(pos)
 				if cell != nil && cell.material != air {
 					cell.material = air
 					break
+				}
+			}
+		} else if action == glfw.Press && button == glfw.MouseButtonRight {
+			increment := player.lookDir().Mul(0.05)
+			pos := player.loc
+			var prevCell, cell *cell
+			for i := 0; i < 100; i++ {
+				pos = pos.Add(increment)
+				next := p.cartesianToCell(pos)
+				if next != cell {
+					prevCell = cell
+					cell = next
+					if cell != nil && cell.material != air {
+						if prevCell != nil {
+							prevCell.material = rock
+						}
+						break
+					}
 				}
 			}
 		}
