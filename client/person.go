@@ -1,9 +1,10 @@
-package main
+package client
 
 import (
 	"math"
 
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/jeffbaumes/gogame/server"
 )
 
 type person struct {
@@ -43,23 +44,23 @@ func (player *person) lookDir() mgl32.Vec3 {
 	return mgl32.QuatRotate(float32((player.lookAltitude-90.0)*math.Pi/180.0), right).Rotate(up)
 }
 
-func (player *person) collide(p *planet, height, dLon, dLat, dAlt float32) {
+func (player *person) collide(p *server.Planet, height, dLon, dLat, dAlt float32) {
 	up := player.loc.Normalize()
 	pos := player.loc.Sub(up.Mul(float32(player.height) - height))
-	lon, lat, alt := p.cartesianToIndex(pos)
-	cLon, cLat, cAlt := p.indexToCellCenterIndex(lon, lat, alt)
-	adjCell := p.indexToCell(cLon+dLon, cLat+dLat, cAlt+dAlt)
-	if adjCell != nil && adjCell.material != air {
+	lon, lat, alt := p.CartesianToIndex(pos)
+	cLon, cLat, cAlt := p.IndexToCellCenterIndex(lon, lat, alt)
+	adjCell := p.IndexToCell(cLon+dLon, cLat+dLat, cAlt+dAlt)
+	if adjCell != nil && adjCell.Material != server.Air {
 		if dAlt != 0 {
-			nLoc := p.indexToCartesian(cLon+dLon/2, cLat+dLat/2, cAlt+dAlt/2)
+			nLoc := p.IndexToCartesian(cLon+dLon/2, cLat+dLat/2, cAlt+dAlt/2)
 			distToPlane := up.Dot(pos.Sub(nLoc))
 			if distToPlane < 0 {
 				move := -distToPlane
 				player.loc = player.loc.Add(up.Mul(move))
 			}
 		} else {
-			nLoc := p.indexToCartesian(cLon+dLon/2, cLat+dLat/2, cAlt+dAlt/2)
-			aLoc := p.indexToCartesian(cLon+dLon, cLat+dLat, cAlt+dAlt)
+			nLoc := p.IndexToCartesian(cLon+dLon/2, cLat+dLat/2, cAlt+dAlt/2)
+			aLoc := p.IndexToCartesian(cLon+dLon, cLat+dLat, cAlt+dAlt)
 			cNorm := nLoc.Sub(aLoc).Normalize()
 			cNorm = cNorm.Sub(project(cNorm, up)).Normalize()
 			distToPlane := cNorm.Dot(pos.Sub(nLoc))

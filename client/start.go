@@ -1,7 +1,10 @@
-package main
+package client
 
 import (
+	"fmt"
+	"log"
 	"math"
+	"net/rpc"
 	"runtime"
 	"time"
 
@@ -9,7 +12,7 @@ import (
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
-	opensimplex "github.com/ojrac/opensimplex-go"
+	"github.com/jeffbaumes/gogame/server"
 )
 
 const (
@@ -23,14 +26,55 @@ const (
 )
 
 var (
-	noise         = opensimplex.NewWithSeed(0)
 	cursorGrabbed = false
 	player        = newPerson()
-	p             *planet
+	p             *server.Planet
 	aspectRatio   = float32(1.0)
 	lastCursor    = mgl64.Vec2{math.NaN(), math.NaN()}
 	g             = 9.8
+	conn          *rpc.Client
 )
+
+func Start(username, host string, port int) {
+	runtime.LockOSThread()
+
+	conn, err := rpc.DialHTTP("tcp", fmt.Sprintf("%v:%v", host, port))
+	if err != nil {
+		log.Fatal("dialing:", err)
+	}
+	// Synchronous call
+	args := &server.Args{A: 7, B: 8}
+	var reply int
+	err = conn.Call("Arith.Multiply", args, &reply)
+	if err != nil {
+		log.Fatal("arith error:", err)
+	}
+	fmt.Printf("Arith: %d*%d=%d\n", args.A, args.B, reply)
+
+	window := initGlfw()
+	window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
+	cursorGrabbed = true
+	window.SetKeyCallback(keyCallback)
+	window.SetCursorPosCallback(cursorPosCallback)
+	window.SetSizeCallback(windowSizeCallback)
+	window.SetMouseButtonCallback(mouseButtonCallback)
+	defer glfw.Terminate()
+	program := initOpenGL()
+	projection := uniformLocation(program, "proj")
+
+	u := server.NewUniverse(0)
+	p = server.NewPlanet(u, 10.0, 1.0, 85.0, 80, 64, 16)
+	// p = server.NewPlanet(u, 20.0, 85.0, 80, 60, 20, 15, 20)
+	t := time.Now()
+	for !window.ShouldClose() {
+		h := float32(time.Since(t)) / float32(time.Second)
+		t = time.Now()
+
+		draw(h, window, program, projection)
+
+		time.Sleep(time.Second/time.Duration(fps) - time.Since(t))
+	}
+}
 
 func cursorPosCallback(w *glfw.Window, xpos float64, ypos float64) {
 	if !cursorGrabbed {
@@ -117,25 +161,25 @@ func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Ac
 			pos := player.loc
 			for i := 0; i < 100; i++ {
 				pos = pos.Add(increment)
-				cell := p.cartesianToCell(pos)
-				if cell != nil && cell.material != air {
-					cell.material = air
+				cell := p.CartesianToCell(pos)
+				if cell != nil && cell.Material != server.Air {
+					cell.Material = server.Air
 					break
 				}
 			}
 		} else if action == glfw.Press && button == glfw.MouseButtonRight {
 			increment := player.lookDir().Mul(0.05)
 			pos := player.loc
-			var prevCell, cell *cell
+			var prevCell, cell *server.Cell
 			for i := 0; i < 100; i++ {
 				pos = pos.Add(increment)
-				next := p.cartesianToCell(pos)
+				next := p.CartesianToCell(pos)
 				if next != cell {
 					prevCell = cell
 					cell = next
-					if cell != nil && cell.material != air {
+					if cell != nil && cell.Material != server.Air {
 						if prevCell != nil {
-							prevCell.material = rock
+							prevCell.Material = server.Rock
 						}
 						break
 					}
@@ -147,32 +191,6 @@ func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Ac
 			w.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
 			cursorGrabbed = true
 		}
-	}
-}
-
-func main() {
-	runtime.LockOSThread()
-
-	window := InitGlfw()
-	window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
-	cursorGrabbed = true
-	window.SetKeyCallback(keyCallback)
-	window.SetCursorPosCallback(cursorPosCallback)
-	window.SetSizeCallback(windowSizeCallback)
-	window.SetMouseButtonCallback(mouseButtonCallback)
-	defer glfw.Terminate()
-	program := InitOpenGL()
-	projection := UniformLocation(program, "proj")
-
-	p = newPlanet(20.0, 70.0, 80, 60, 20, 15, 20)
-	t := time.Now()
-	for !window.ShouldClose() {
-		h := float32(time.Since(t)) / float32(time.Second)
-		t = time.Now()
-
-		draw(h, window, program, projection)
-
-		time.Sleep(time.Second/time.Duration(fps) - time.Since(t))
 	}
 }
 
@@ -199,7 +217,7 @@ func draw(h float32, window *glfw.Window, program uint32, projection int32) {
 	proj := perspective.Mul4(view)
 	gl.UniformMatrix4fv(projection, 1, false, &proj[0])
 
-	p.draw()
+	drawPlanet(p)
 
 	if !cursorGrabbed {
 		glfw.PollEvents()
@@ -212,8 +230,8 @@ func draw(h float32, window *glfw.Window, program uint32, projection int32) {
 	right := player.lookHeading.Cross(up)
 	if player.gameMode == normal {
 		feet := player.loc.Sub(up.Mul(float32(player.height)))
-		feetCell := p.cartesianToCell(feet)
-		falling := feetCell == nil || feetCell.material == air
+		feetCell := p.CartesianToCell(feet)
+		falling := feetCell == nil || feetCell.Material == server.Air
 		if falling {
 			player.fallVel -= 20 * h
 		} else if player.holdingJump && !player.inJump {
@@ -230,8 +248,7 @@ func draw(h float32, window *glfw.Window, program uint32, projection int32) {
 		playerVel = playerVel.Add(right.Mul((player.rightVel - player.leftVel)))
 
 		player.loc = player.loc.Add(playerVel.Mul(h))
-		cellHeight := p.radius / float64(p.altCells)
-		for height := cellHeight / 2; height < player.height; height += cellHeight {
+		for height := p.AltDelta / 2; height < player.height; height += p.AltDelta {
 			player.collide(p, float32(height), 0, 0, -1)
 			player.collide(p, float32(height), 1, 0, 0)
 			player.collide(p, float32(height), -1, 0, 0)

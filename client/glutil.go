@@ -1,4 +1,4 @@
-package main
+package client
 
 import (
 	"fmt"
@@ -47,8 +47,7 @@ const (
 	` + "\x00"
 )
 
-// InitGlfw initializes GLFW and returns the window
-func InitGlfw() *glfw.Window {
+func initGlfw() *glfw.Window {
 	if err := glfw.Init(); err != nil {
 		panic(err)
 	}
@@ -66,8 +65,7 @@ func InitGlfw() *glfw.Window {
 	return window
 }
 
-// InitOpenGL initializes the OpenGL context and returns the program
-func InitOpenGL() uint32 {
+func initOpenGL() uint32 {
 	if err := gl.Init(); err != nil {
 		panic(err)
 	}
@@ -99,7 +97,7 @@ func InitOpenGL() uint32 {
 }
 
 // MakeVao creates two buffers for the points and normals and returns a VAO for both
-func MakeVao(points []float32, normals []float32) uint32 {
+func makeVao(points []float32, normals []float32) uint32 {
 	var vbo = make([]uint32, 2)
 	gl.GenBuffers(2, (*uint32)(gl.Ptr(vbo)))
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo[0])
@@ -150,7 +148,7 @@ func compileShader(source string, shaderType uint32) (uint32, error) {
 }
 
 // UniformLocation retrieves a uniform location by name
-func UniformLocation(program uint32, name string) int32 {
+func uniformLocation(program uint32, name string) int32 {
 	glstr, free := gl.Strs(name)
 	uniform := gl.GetUniformLocation(program, *glstr)
 	free()
