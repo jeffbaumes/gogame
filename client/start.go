@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"net"
 	"net/rpc"
 	"runtime"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/hashicorp/yamux"
 	"github.com/jeffbaumes/gogame/server"
 )
 
@@ -38,14 +40,36 @@ var (
 func Start(username, host string, port int) {
 	runtime.LockOSThread()
 
-	conn, err := rpc.DialHTTP("tcp", fmt.Sprintf("%v:%v", host, port))
+	conn, err := net.Dial("tcp", fmt.Sprintf("%v:%v", host, port))
 	if err != nil {
-		log.Fatal("dialing:", err)
+		panic(err)
 	}
+
+	// Setup client side of yamux
+	cmux, e := yamux.Client(conn, nil)
+	if e != nil {
+		panic(e)
+	}
+	stream, e := cmux.Open()
+	if e != nil {
+		panic(e)
+	}
+	client := rpc.NewClient(stream)
+
+	// Setup server connection
+	smuxConn, e := cmux.Accept()
+	if e != nil {
+		panic(e)
+	}
+	s := rpc.NewServer()
+	arith := new(server.Arith)
+	s.Register(arith)
+	go s.ServeConn(smuxConn)
+
 	// Synchronous call
 	args := &server.Args{A: 7, B: 8}
 	var reply int
-	err = conn.Call("Arith.Multiply", args, &reply)
+	err = client.Call("Arith.Multiply", args, &reply)
 	if err != nil {
 		log.Fatal("arith error:", err)
 	}
@@ -64,7 +88,6 @@ func Start(username, host string, port int) {
 
 	u := server.NewUniverse(0)
 	p = server.NewPlanet(u, 10.0, 1.0, 85.0, 80, 64, 16)
-	// p = server.NewPlanet(u, 20.0, 85.0, 80, 60, 20, 15, 20)
 	t := time.Now()
 	for !window.ShouldClose() {
 		h := float32(time.Since(t)) / float32(time.Second)

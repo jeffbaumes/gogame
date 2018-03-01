@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"net/http"
 	"net/rpc"
 	"strconv"
 
+	"github.com/hashicorp/yamux"
 	_ "github.com/mattn/go-sqlite3" // Needed to use sqlite
 )
 
@@ -84,8 +84,6 @@ func Start(name string, seed, port int) {
 	if rows.Next() {
 		err = rows.Scan(&data)
 		checkErr(err)
-		// fmt.Println("data:")
-		// fmt.Println(data)
 	}
 	rows.Close()
 
@@ -96,18 +94,48 @@ func Start(name string, seed, port int) {
 	err = dec.Decode(&c)
 	checkErr(err)
 
-	// fmt.Println("c:")
-	// fmt.Println(c)
-
 	u = NewUniverse(seed)
+	p = NewPlanet(u, 10.0, 1.0, 85.0, 80, 64, 16)
 
 	arith := new(Arith)
-	rpc.Register(arith)
-	rpc.HandleHTTP()
-	l, e := net.Listen("tcp", fmt.Sprintf(":%v", port))
-	log.Printf("Server listening on port %v...\n", port)
+	listener, e := net.Listen("tcp", fmt.Sprintf(":%v", port))
 	if e != nil {
 		log.Fatal("listen error:", e)
 	}
-	http.Serve(l, nil)
+	log.Printf("Server listening on port %v...\n", port)
+	for {
+		conn, e := listener.Accept()
+		if e != nil {
+			panic(e)
+		}
+
+		// Set up server side of yamux
+		mux, e := yamux.Server(conn, nil)
+		if e != nil {
+			panic(e)
+		}
+		muxConn, e := mux.Accept()
+		if e != nil {
+			panic(e)
+		}
+		s := rpc.NewServer()
+		s.Register(arith)
+		go s.ServeConn(muxConn)
+
+		// Set up stream back to client
+		stream, e := mux.Open()
+		if e != nil {
+			panic(e)
+		}
+		crpc := rpc.NewClient(stream)
+
+		// Synchronous call
+		args := &Args{A: 7, B: 8}
+		var reply int
+		err = crpc.Call("Arith.Multiply", args, &reply)
+		if err != nil {
+			log.Fatal("arith error:", err)
+		}
+		fmt.Printf("Arith: %d*%d=%d\n", args.A, args.B, reply)
+	}
 }
