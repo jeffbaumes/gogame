@@ -83,6 +83,12 @@ func (p *Planet) IndexToChunk(lon, lat, alt float32) *Chunk {
 	return p.GetChunk(clon, clat, calt)
 }
 
+// CartesianToChunk converts world coordinates to a chunk
+func (p *Planet) CartesianToChunk(cart mgl32.Vec3) *Chunk {
+	lon, lat, alt := p.CartesianToIndex(cart)
+	return p.IndexToChunk(lon, lat, alt)
+}
+
 // IndexToCellCenterIndex converts floating-point cell indices to the nearest integral indices
 func (p *Planet) IndexToCellCenterIndex(lon, lat, alt float32) (cLon, cLat, cAlt float32) {
 	cLon = float32(math.Floor(float64(lon) + 0.5))

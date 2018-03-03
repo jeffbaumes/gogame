@@ -176,6 +176,8 @@ func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Ac
 				cell := p.CartesianToCell(pos)
 				if cell != nil && cell.Material != server.Air {
 					cell.Material = server.Air
+					chunk := p.CartesianToChunk(pos)
+					chunk.GraphicsInitialized = false
 					break
 				}
 			}
@@ -192,6 +194,8 @@ func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Ac
 					if cell != nil && cell.Material != server.Air {
 						if prevCell != nil {
 							prevCell.Material = server.Rock
+							chunk := p.CartesianToChunk(pos)
+							chunk.GraphicsInitialized = false
 						}
 						break
 					}
