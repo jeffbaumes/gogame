@@ -4,10 +4,6 @@ import (
 	opensimplex "github.com/ojrac/opensimplex-go"
 )
 
-var (
-	u *Universe
-)
-
 type Universe struct {
 	seed      int
 	noise     *opensimplex.Noise

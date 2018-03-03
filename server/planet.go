@@ -1,7 +1,9 @@
 package server
 
 import (
+	"log"
 	"math"
+	"net/rpc"
 
 	"github.com/go-gl/mathgl/mgl32"
 )
@@ -15,6 +17,7 @@ type planetState struct {
 	LonCells, LatCells, AltCells int
 	Cells                        [][][]*Cell
 	Chunks                       map[ChunkKey]*Chunk
+	RPC                          *rpc.Client
 }
 
 type Planet struct {
@@ -22,7 +25,7 @@ type Planet struct {
 	planetState
 }
 
-func NewPlanet(u *Universe, altMin, altDelta, latMax float64, lonCells, latCells, altCells int) *Planet {
+func NewPlanet(u *Universe, altMin, altDelta, latMax float64, lonCells, latCells, altCells int, crpc *rpc.Client) *Planet {
 	p := Planet{}
 	p.Universe = u
 	p.AltMin = altMin
@@ -32,11 +35,32 @@ func NewPlanet(u *Universe, altMin, altDelta, latMax float64, lonCells, latCells
 	p.LatCells = latCells / ChunkSize * ChunkSize
 	p.AltCells = altCells / ChunkSize * ChunkSize
 	p.Chunks = make(map[ChunkKey]*Chunk)
+	p.RPC = crpc
 	return &p
 }
 
 type ChunkKey struct {
 	Lon, Lat, Alt int
+}
+
+func (p *Planet) GetChunk(lon, lat, alt int) *Chunk {
+	key := ChunkKey{lon, lat, alt}
+	chunk := p.Chunks[key]
+	if chunk == nil {
+		if p.RPC == nil {
+			chunk = newChunk(lon, lat, alt, p)
+			p.Chunks[key] = chunk
+		} else {
+			args := GetChunkArgs{Lon: lon, Lat: lat, Alt: alt}
+			rchunk := Chunk{}
+			e := p.RPC.Call("Server.GetChunk", args, &rchunk)
+			if e != nil {
+				log.Fatal("GetChunk error:", e)
+			}
+			p.Chunks[key] = &rchunk
+		}
+	}
+	return chunk
 }
 
 func (p *Planet) IndexToChunk(lon, lat, alt float32) *Chunk {
@@ -49,13 +73,7 @@ func (p *Planet) IndexToChunk(lon, lat, alt float32) *Chunk {
 	clon := int(math.Floor(float64(lon))) / ChunkSize
 	clat := int(math.Floor(float64(lat))) / ChunkSize
 	calt := int(math.Floor(float64(alt))) / ChunkSize
-	key := ChunkKey{clon, clat, calt}
-	chunk := p.Chunks[key]
-	if chunk == nil {
-		chunk = newChunk(clon, clat, calt, p)
-		p.Chunks[key] = chunk
-	}
-	return chunk
+	return p.GetChunk(clon, clat, calt)
 }
 
 func (p *Planet) IndexToCellCenterIndex(lon, lat, alt float32) (cLon, cLat, cAlt float32) {
@@ -170,14 +188,10 @@ func newChunk(lon, lat, alt int, p *Planet) *Chunk {
 	return &chunk
 }
 
-type cellState struct {
-	Material int
-}
-
 type Cell struct {
 	Drawable            uint32
 	GraphicsInitialized bool
-	cellState
+	Material            int
 }
 
 const (

@@ -1,9 +1,7 @@
 package server
 
 import (
-	"bytes"
 	"database/sql"
-	"encoding/gob"
 	"fmt"
 	"log"
 	"net"
@@ -12,6 +10,11 @@ import (
 
 	"github.com/hashicorp/yamux"
 	_ "github.com/mattn/go-sqlite3" // Needed to use sqlite
+)
+
+var (
+	u *Universe
+	p *Planet
 )
 
 // Start takes a name, seed, and port and starts the universe server
@@ -54,50 +57,51 @@ func Start(name string, seed, port int) {
 	}
 	rows.Close()
 
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
+	// var buf bytes.Buffer
+	// enc := gob.NewEncoder(&buf)
 
-	u := NewUniverse(0)
-	p := NewPlanet(u, 10.0, 1.0, 85.0, 80, 60, 5)
+	// u := NewUniverse(0)
+	// p := NewPlanet(u, 10.0, 1.0, 85.0, 80, 60, 5)
 
-	err = enc.Encode(p.planetState)
-	checkErr(err)
+	// err = enc.Encode(p.planetState)
+	// checkErr(err)
 
-	stmt, err = db.Prepare("DROP TABLE IF EXISTS temp")
-	checkErr(err)
-	_, err = stmt.Exec()
-	checkErr(err)
+	// stmt, err = db.Prepare("DROP TABLE IF EXISTS temp")
+	// checkErr(err)
+	// _, err = stmt.Exec()
+	// checkErr(err)
 
-	stmt, err = db.Prepare("CREATE TABLE IF NOT EXISTS temp (data BLOB)")
-	checkErr(err)
-	_, err = stmt.Exec()
-	checkErr(err)
+	// stmt, err = db.Prepare("CREATE TABLE IF NOT EXISTS temp (data BLOB)")
+	// checkErr(err)
+	// _, err = stmt.Exec()
+	// checkErr(err)
 
-	stmt, err = db.Prepare("INSERT INTO temp VALUES (?)")
-	checkErr(err)
-	_, err = stmt.Exec(buf.Bytes())
-	checkErr(err)
+	// stmt, err = db.Prepare("INSERT INTO temp VALUES (?)")
+	// checkErr(err)
+	// _, err = stmt.Exec(buf.Bytes())
+	// checkErr(err)
 
-	rows, err = db.Query("SELECT data FROM temp")
-	checkErr(err)
-	var data []byte
-	if rows.Next() {
-		err = rows.Scan(&data)
-		checkErr(err)
-	}
-	rows.Close()
+	// rows, err = db.Query("SELECT data FROM temp")
+	// checkErr(err)
+	// var data []byte
+	// if rows.Next() {
+	// 	err = rows.Scan(&data)
+	// 	checkErr(err)
+	// }
+	// rows.Close()
 
-	var dbuf bytes.Buffer
-	dbuf.Write(data)
-	dec := gob.NewDecoder(&dbuf)
-	var c planetState
-	err = dec.Decode(&c)
-	checkErr(err)
+	// var dbuf bytes.Buffer
+	// dbuf.Write(data)
+	// dec := gob.NewDecoder(&dbuf)
+	// var c planetState
+	// err = dec.Decode(&c)
+	// checkErr(err)
 
-	u = NewUniverse(seed)
-	p = NewPlanet(u, 10.0, 1.0, 85.0, 80, 64, 16)
+	u = NewUniverse(0)
+	p = NewPlanet(u, 10.0, 1.0, 60.0, 80, 64, 16, nil)
 
 	arith := new(Arith)
+	serverAPI := new(Server)
 	listener, e := net.Listen("tcp", fmt.Sprintf(":%v", port))
 	if e != nil {
 		log.Fatal("listen error:", e)
@@ -118,9 +122,10 @@ func Start(name string, seed, port int) {
 		if e != nil {
 			panic(e)
 		}
-		s := rpc.NewServer()
-		s.Register(arith)
-		go s.ServeConn(muxConn)
+		srpc := rpc.NewServer()
+		srpc.Register(arith)
+		srpc.Register(serverAPI)
+		go srpc.ServeConn(muxConn)
 
 		// Set up stream back to client
 		stream, e := mux.Open()

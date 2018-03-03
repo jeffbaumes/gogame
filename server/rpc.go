@@ -1,6 +1,22 @@
 package server
 
-import "errors"
+import (
+	"errors"
+)
+
+type GetChunkArgs struct {
+	Lat, Lon, Alt int
+}
+
+type Server int
+
+func (t *Server) GetChunk(args *GetChunkArgs, chunk *Chunk) error {
+	c := p.GetChunk(args.Lat, args.Lon, args.Alt)
+	if c != nil {
+		*chunk = *c
+	}
+	return nil
+}
 
 type Args struct {
 	A, B int

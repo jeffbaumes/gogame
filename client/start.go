@@ -34,7 +34,7 @@ var (
 	aspectRatio   = float32(1.0)
 	lastCursor    = mgl64.Vec2{math.NaN(), math.NaN()}
 	g             = 9.8
-	conn          *rpc.Client
+	cRPC          *rpc.Client
 )
 
 func Start(username, host string, port int) {
@@ -54,7 +54,7 @@ func Start(username, host string, port int) {
 	if e != nil {
 		panic(e)
 	}
-	client := rpc.NewClient(stream)
+	cRPC = rpc.NewClient(stream)
 
 	// Setup server connection
 	smuxConn, e := cmux.Accept()
@@ -69,7 +69,7 @@ func Start(username, host string, port int) {
 	// Synchronous call
 	args := &server.Args{A: 7, B: 8}
 	var reply int
-	err = client.Call("Arith.Multiply", args, &reply)
+	err = cRPC.Call("Arith.Multiply", args, &reply)
 	if err != nil {
 		log.Fatal("arith error:", err)
 	}
@@ -87,7 +87,7 @@ func Start(username, host string, port int) {
 	projection := uniformLocation(program, "proj")
 
 	u := server.NewUniverse(0)
-	p = server.NewPlanet(u, 10.0, 1.0, 85.0, 80, 64, 16)
+	p = server.NewPlanet(u, 10.0, 1.0, 60.0, 80, 64, 16, cRPC)
 	t := time.Now()
 	for !window.ShouldClose() {
 		h := float32(time.Since(t)) / float32(time.Second)
