@@ -144,7 +144,9 @@ func (p *Planet) IndexToSpherical(lon, lat, alt float32) (r, theta, phi float32)
 
 // Chunk is a 3D block of planet cells
 type Chunk struct {
-	Cells [][][]*Cell
+	Drawable            uint32
+	GraphicsInitialized bool
+	Cells               [][][]*Cell
 }
 
 func newChunk(lon, lat, alt int, p *Planet) *Chunk {
@@ -172,9 +174,7 @@ func newChunk(lon, lat, alt int, p *Planet) *Chunk {
 
 // Cell is a single block on a planet
 type Cell struct {
-	Drawable            uint32
-	GraphicsInitialized bool
-	Material            int
+	Material int
 }
 
 // Air is a transparent, empty material
