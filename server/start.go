@@ -13,8 +13,9 @@ import (
 )
 
 var (
-	u *Universe
-	p *Planet
+	u    *Universe
+	p    *Planet
+	cRPC *rpc.Client
 )
 
 // Start takes a name, seed, and port and starts the universe server
@@ -100,7 +101,6 @@ func Start(name string, seed, port int) {
 	u = NewUniverse(0)
 	p = NewPlanet(u, 10.0, 1.0, 60.0, 80, 64, 16, nil)
 
-	arith := new(Arith)
 	serverAPI := new(Server)
 	listener, e := net.Listen("tcp", fmt.Sprintf(":%v", port))
 	if e != nil {
@@ -123,7 +123,6 @@ func Start(name string, seed, port int) {
 			panic(e)
 		}
 		srpc := rpc.NewServer()
-		srpc.Register(arith)
 		srpc.Register(serverAPI)
 		go srpc.ServeConn(muxConn)
 
@@ -132,15 +131,6 @@ func Start(name string, seed, port int) {
 		if e != nil {
 			panic(e)
 		}
-		crpc := rpc.NewClient(stream)
-
-		// Synchronous call
-		args := &Args{A: 7, B: 8}
-		var reply int
-		err = crpc.Call("Arith.Multiply", args, &reply)
-		if err != nil {
-			log.Fatal("arith error:", err)
-		}
-		fmt.Printf("Arith: %d*%d=%d\n", args.A, args.B, reply)
+		cRPC = rpc.NewClient(stream)
 	}
 }

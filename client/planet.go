@@ -58,19 +58,6 @@ var (
 	}
 )
 
-// func drawPlanet(p *server.Planet) {
-// 	for lonInd := range p.Cells {
-// 		for latInd := range p.Cells[lonInd] {
-// 			for altInd, c := range p.Cells[lonInd][latInd] {
-// 				if !c.GraphicsInitialized {
-// 					initCellGraphics(c, p, lonInd, latInd, altInd)
-// 				}
-// 				drawCell(c)
-// 			}
-// 		}
-// 	}
-// }
-
 func drawPlanet(p *server.Planet) {
 	for key, chunk := range p.Chunks {
 		for lonInd := range chunk.Cells {

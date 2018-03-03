@@ -8,11 +8,13 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 )
 
+// ChunkSize is the number of cells per side of a chunk
 const (
 	ChunkSize = 16
 )
 
-type planetState struct {
+// PlanetState is the serializable portion of a Planet
+type PlanetState struct {
 	AltMin, AltDelta, LatMax     float64
 	LonCells, LatCells, AltCells int
 	Cells                        [][][]*Cell
@@ -20,11 +22,13 @@ type planetState struct {
 	RPC                          *rpc.Client
 }
 
+// Planet represents all the cells in a spherical planet
 type Planet struct {
 	Universe *Universe
-	planetState
+	PlanetState
 }
 
+// NewPlanet constructs a Planet instance
 func NewPlanet(u *Universe, altMin, altDelta, latMax float64, lonCells, latCells, altCells int, crpc *rpc.Client) *Planet {
 	p := Planet{}
 	p.Universe = u
@@ -39,10 +43,12 @@ func NewPlanet(u *Universe, altMin, altDelta, latMax float64, lonCells, latCells
 	return &p
 }
 
+// ChunkKey stores the latitude, longitude, and altitude index of a chunk
 type ChunkKey struct {
 	Lon, Lat, Alt int
 }
 
+// GetChunk retrieves the chunk of a planet from chunk indices
 func (p *Planet) GetChunk(lon, lat, alt int) *Chunk {
 	key := ChunkKey{lon, lat, alt}
 	chunk := p.Chunks[key]
@@ -63,6 +69,7 @@ func (p *Planet) GetChunk(lon, lat, alt int) *Chunk {
 	return chunk
 }
 
+// IndexToChunk converts floating-point cell indices to a chunk
 func (p *Planet) IndexToChunk(lon, lat, alt float32) *Chunk {
 	if lon < 0 || lat < 0 || alt < 0 {
 		return nil
@@ -76,6 +83,7 @@ func (p *Planet) IndexToChunk(lon, lat, alt float32) *Chunk {
 	return p.GetChunk(clon, clat, calt)
 }
 
+// IndexToCellCenterIndex converts floating-point cell indices to the nearest integral indices
 func (p *Planet) IndexToCellCenterIndex(lon, lat, alt float32) (cLon, cLat, cAlt float32) {
 	cLon = float32(math.Floor(float64(lon) + 0.5))
 	cLat = float32(math.Floor(float64(lat) + 0.5))
@@ -83,6 +91,7 @@ func (p *Planet) IndexToCellCenterIndex(lon, lat, alt float32) (cLon, cLat, cAlt
 	return
 }
 
+// IndexToCell converts floating-point chunk indices to a cell
 func (p *Planet) IndexToCell(lon, lat, alt float32) *Cell {
 	chunk := p.IndexToChunk(lon, lat, alt)
 	if chunk == nil {
@@ -94,6 +103,7 @@ func (p *Planet) IndexToCell(lon, lat, alt float32) *Cell {
 	return chunk.Cells[lonInd][latInd][altInd]
 }
 
+// SphericalToIndex converts spherical coordinates to floating-point cell indices
 func (p *Planet) SphericalToIndex(r, theta, phi float32) (lon, lat, alt float32) {
 	alt = (r - float32(p.AltMin)) / float32(p.AltDelta)
 	lat = (180*theta/math.Pi - 90 + float32(p.LatMax)) * float32(p.LatCells) / (2 * float32(p.LatMax))
@@ -104,23 +114,27 @@ func (p *Planet) SphericalToIndex(r, theta, phi float32) (lon, lat, alt float32)
 	return
 }
 
+// CartesianToCell returns the cell contianing a set of world coordinates
 func (p *Planet) CartesianToCell(cart mgl32.Vec3) *Cell {
 	r, theta, phi := mgl32.CartesianToSpherical(cart)
 	lon, lat, alt := p.SphericalToIndex(r, theta, phi)
 	return p.IndexToCell(lon, lat, alt)
 }
 
+// CartesianToIndex converts world coordinates to floating-point cell indices
 func (p *Planet) CartesianToIndex(cart mgl32.Vec3) (lon, lat, alt float32) {
 	r, theta, phi := mgl32.CartesianToSpherical(cart)
 	lon, lat, alt = p.SphericalToIndex(r, theta, phi)
 	return
 }
 
+// IndexToCartesian converts floating-point cell indices to world coordinates
 func (p *Planet) IndexToCartesian(lon, lat, alt float32) mgl32.Vec3 {
 	r, theta, phi := p.IndexToSpherical(lon, lat, alt)
 	return mgl32.SphericalToCartesian(r, theta, phi)
 }
 
+// IndexToSpherical converts floating-point cell indices to spherical coordinates
 func (p *Planet) IndexToSpherical(lon, lat, alt float32) (r, theta, phi float32) {
 	r = alt*float32(p.AltDelta) + float32(p.AltMin)
 	theta = (math.Pi / 180) * ((90.0 - float32(p.LatMax)) + (lat/float32(p.LatCells))*(2.0*float32(p.LatMax)))
@@ -128,39 +142,7 @@ func (p *Planet) IndexToSpherical(lon, lat, alt float32) (r, theta, phi float32)
 	return
 }
 
-func (p *Planet) nearestCellNormal(cart mgl32.Vec3) (normal mgl32.Vec3, separation float32) {
-	lon, lat, alt := p.CartesianToIndex(cart)
-	cLon, cLat, cAlt := p.IndexToCellCenterIndex(lon, lat, alt)
-	dLon := float64(lon - cLon)
-	dLat := float64(lat - cLat)
-	dAlt := float64(alt - cAlt)
-	nLon, nLat, nAlt := cLon, cLat, cAlt
-	if math.Abs(dLon) > math.Abs(dLat) && math.Abs(dLon) > math.Abs(dAlt) {
-		if dLon > 0 {
-			nLon = cLon + 0.5
-		} else {
-			nLon = cLon - 0.5
-		}
-	} else if math.Abs(dLat) > math.Abs(dAlt) {
-		if dLat > 0 {
-			nLat = cLat + 0.5
-		} else {
-			nLat = cLat - 0.5
-		}
-	} else {
-		if dAlt > 0 {
-			nAlt = cAlt + 0.5
-		} else {
-			nAlt = cAlt - 0.5
-		}
-	}
-	nLoc := p.IndexToCartesian(float32(nLon), float32(nLat), float32(nAlt))
-	cLoc := p.IndexToCartesian(float32(cLon), float32(cLat), float32(cAlt))
-	normal = nLoc.Sub(cLoc).Normalize()
-	separation = normal.Dot(cart.Sub(nLoc))
-	return
-}
-
+// Chunk is a 3D block of planet cells
 type Chunk struct {
 	Cells [][][]*Cell
 }
@@ -188,12 +170,15 @@ func newChunk(lon, lat, alt int, p *Planet) *Chunk {
 	return &chunk
 }
 
+// Cell is a single block on a planet
 type Cell struct {
 	Drawable            uint32
 	GraphicsInitialized bool
 	Material            int
 }
 
+// Air is a transparent, empty material
+// Rock is an opaque, solid material
 const (
 	Air  = iota
 	Rock = iota
