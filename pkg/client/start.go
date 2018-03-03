@@ -13,7 +13,7 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/hashicorp/yamux"
-	"github.com/jeffbaumes/gogame/server"
+	"github.com/jeffbaumes/gogame/pkg/server"
 )
 
 const (

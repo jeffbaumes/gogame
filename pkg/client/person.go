@@ -4,7 +4,7 @@ import (
 	"math"
 
 	"github.com/go-gl/mathgl/mgl32"
-	"github.com/jeffbaumes/gogame/server"
+	"github.com/jeffbaumes/gogame/pkg/server"
 )
 
 type person struct {

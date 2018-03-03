@@ -3,7 +3,7 @@ package client
 import (
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
-	"github.com/jeffbaumes/gogame/server"
+	"github.com/jeffbaumes/gogame/pkg/server"
 )
 
 var (

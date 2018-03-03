@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/jeffbaumes/gogame/server"
+	"github.com/jeffbaumes/gogame/pkg/server"
 )
 
 func main() {
