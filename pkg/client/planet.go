@@ -69,52 +69,51 @@ func drawPlanet(p *server.Planet) {
 
 func initChunkGraphics(c *server.Chunk, p *server.Planet, lonIndex, latIndex, altIndex int) {
 	cs := server.ChunkSize
-	cs3 := cs * cs * cs
-	points := make([]float32, cs3*len(square), cs3*len(square))
-	n := make([]float32, cs3*len(square), cs3*len(square))
+	points := []float32{}
+	normals := []float32{}
 
-	cInd := 0
 	for cLon := 0; cLon < cs; cLon++ {
 		for cLat := 0; cLat < cs; cLat++ {
-			for cAlt := 0; cAlt < cs; cAlt, cInd = cAlt+1, cInd+1 {
+			for cAlt := 0; cAlt < cs; cAlt++ {
 				if c.Cells[cLon][cLat][cAlt].Material != server.Air {
+					pts := make([]float32, len(square))
 					for i := 0; i < len(square); i += 3 {
-						pInd := cInd*len(square) + i
 						lonVal := float32(cs*lonIndex+cLon) + square[i]
 						latVal := float32(cs*latIndex+cLat) + square[i+1]
 						altVal := float32(cs*altIndex+cAlt) + square[i+2]
 						r, theta, phi := p.IndexToSpherical(lonVal, latVal, altVal)
 						cart := mgl32.SphericalToCartesian(r, theta, phi)
-						points[pInd] = cart[0]
-						points[pInd+1] = cart[1]
-						points[pInd+2] = cart[2]
+						pts[i] = cart[0]
+						pts[i+1] = cart[1]
+						pts[i+2] = cart[2]
 					}
+					points = append(points, pts...)
 
+					nms := make([]float32, len(square))
 					for i := 0; i < len(square); i += 9 {
-						pInd := cInd*len(square) + i
-						p1 := mgl32.Vec3{points[pInd+0], points[pInd+1], points[pInd+2]}
-						p2 := mgl32.Vec3{points[pInd+3], points[pInd+4], points[pInd+5]}
-						p3 := mgl32.Vec3{points[pInd+6], points[pInd+7], points[pInd+8]}
+						p1 := mgl32.Vec3{pts[i+0], pts[i+1], pts[i+2]}
+						p2 := mgl32.Vec3{pts[i+3], pts[i+4], pts[i+5]}
+						p3 := mgl32.Vec3{pts[i+6], pts[i+7], pts[i+8]}
 						v1 := p1.Sub(p2)
 						v2 := p1.Sub(p3)
-						norm := v1.Cross(v2).Normalize()
+						n := v1.Cross(v2).Normalize()
 						for j := 0; j < 3; j++ {
-							n[pInd+3*j+0] = norm[0]
-							n[pInd+3*j+1] = norm[1]
-							n[pInd+3*j+2] = norm[2]
+							nms[i+3*j+0] = n[0]
+							nms[i+3*j+1] = n[1]
+							nms[i+3*j+2] = n[2]
 						}
 					}
+					normals = append(normals, nms...)
 				}
 			}
 		}
 	}
-	c.Drawable = makeVao(points, n)
+	c.Drawable = makeVao(points, normals)
 	c.GraphicsInitialized = true
 }
 
 func drawChunk(chunk *server.Chunk) {
 	gl.BindVertexArray(chunk.Drawable)
 	cs := server.ChunkSize
-	gl.DrawArrays(gl.TRIANGLES, 0, int32(cs*cs*cs*len(square)/3))
-	// gl.DrawArrays(gl.LINES, 0, int32(len(square)/3))
+	gl.DrawArrays(gl.LINES, 0, int32(cs*cs*cs*len(square)/3))
 }

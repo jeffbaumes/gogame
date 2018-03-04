@@ -75,8 +75,7 @@ func Start(username, host string, port int) {
 	program := initOpenGL()
 	projection := uniformLocation(program, "proj")
 
-	u := server.NewUniverse(0)
-	p = server.NewPlanet(u, 10.0, 1.0, 60.0, 80, 64, 16, cRPC)
+	p = server.NewPlanet(50.0, 16, 0, cRPC)
 	t := time.Now()
 	for !window.ShouldClose() {
 		h := float32(time.Since(t)) / float32(time.Second)
@@ -229,7 +228,7 @@ func draw(h float32, window *glfw.Window, program uint32, projection int32) {
 
 	lookDir := player.lookDir()
 	view := mgl32.LookAtV(player.loc, player.loc.Add(lookDir), player.loc.Normalize())
-	perspective := mgl32.Perspective(45, aspectRatio, 0.01, 100)
+	perspective := mgl32.Perspective(45, aspectRatio, 0.01, 1000)
 	proj := perspective.Mul4(view)
 	gl.UniformMatrix4fv(projection, 1, false, &proj[0])
 
@@ -246,6 +245,8 @@ func draw(h float32, window *glfw.Window, program uint32, projection int32) {
 	right := player.lookHeading.Cross(up)
 	if player.gameMode == normal {
 		feet := player.loc.Sub(up.Mul(float32(player.height)))
+		// r, theta, phi := mgl32.CartesianToSpherical(feet)
+		// log.Println(r, theta/math.Pi*180, phi/math.Pi*180)
 		feetCell := p.CartesianToCell(feet)
 		falling := feetCell == nil || feetCell.Material == server.Air
 		if falling {

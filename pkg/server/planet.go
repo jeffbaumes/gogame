@@ -6,6 +6,7 @@ import (
 	"net/rpc"
 
 	"github.com/go-gl/mathgl/mgl32"
+	opensimplex "github.com/ojrac/opensimplex-go"
 )
 
 // ChunkSize is the number of cells per side of a chunk
@@ -18,28 +19,40 @@ type PlanetState struct {
 	AltMin, AltDelta, LatMax     float64
 	LonCells, LatCells, AltCells int
 	Cells                        [][][]*Cell
-	Chunks                       map[ChunkKey]*Chunk
-	RPC                          *rpc.Client
+	Seed                         int
 }
 
 // Planet represents all the cells in a spherical planet
 type Planet struct {
-	Universe *Universe
+	rpc    *rpc.Client
+	Chunks map[ChunkKey]*Chunk
+	noise  *opensimplex.Noise
 	PlanetState
 }
 
 // NewPlanet constructs a Planet instance
-func NewPlanet(u *Universe, altMin, altDelta, latMax float64, lonCells, latCells, altCells int, crpc *rpc.Client) *Planet {
+func NewPlanet(radius float64, altCells, seed int, crpc *rpc.Client) *Planet {
 	p := Planet{}
-	p.Universe = u
-	p.AltMin = altMin
-	p.AltDelta = altDelta
-	p.LatMax = latMax
-	p.LonCells = lonCells / ChunkSize * ChunkSize
-	p.LatCells = latCells / ChunkSize * ChunkSize
+	p.Seed = seed
+	p.noise = opensimplex.NewWithSeed(int64(seed))
+	p.AltMin = radius - float64(altCells)
+	p.AltDelta = 1.0
+	p.LatMax = 60.0
+	p.LonCells = int(2.0*math.Pi*3.0/4.0*radius+0.5) / ChunkSize * ChunkSize
+	p.LatCells = int(2.0/3.0*math.Pi*radius) / ChunkSize * ChunkSize
 	p.AltCells = altCells / ChunkSize * ChunkSize
 	p.Chunks = make(map[ChunkKey]*Chunk)
-	p.RPC = crpc
+	p.rpc = crpc
+	if crpc != nil {
+		for lon := 0; lon < p.LonCells/ChunkSize; lon++ {
+			log.Printf("%v of %v", lon, p.LonCells/ChunkSize)
+			for lat := 0; lat < p.LatCells/ChunkSize; lat++ {
+				for alt := 0; alt < p.AltCells/ChunkSize; alt++ {
+					p.GetChunk(lon, lat, alt)
+				}
+			}
+		}
+	}
 	return &p
 }
 
@@ -53,13 +66,13 @@ func (p *Planet) GetChunk(lon, lat, alt int) *Chunk {
 	key := ChunkKey{lon, lat, alt}
 	chunk := p.Chunks[key]
 	if chunk == nil {
-		if p.RPC == nil {
+		if p.rpc == nil {
 			chunk = newChunk(lon, lat, alt, p)
 			p.Chunks[key] = chunk
 		} else {
 			args := GetChunkArgs{Lon: lon, Lat: lat, Alt: alt}
 			rchunk := Chunk{}
-			e := p.RPC.Call("Server.GetChunk", args, &rchunk)
+			e := p.rpc.Call("Server.GetChunk", args, &rchunk)
 			if e != nil {
 				log.Fatal("GetChunk error:", e)
 			}
@@ -165,7 +178,7 @@ func newChunk(lon, lat, alt int, p *Planet) *Chunk {
 				c := Cell{}
 				pos := p.IndexToCartesian(float32(ChunkSize*lon+lonIndex), float32(ChunkSize*lat+latIndex), float32(ChunkSize*alt+altIndex))
 				const scale = 0.1
-				height := (p.Universe.noise.Eval3(float64(pos[0])*scale, float64(pos[1])*scale, float64(pos[2])*scale) + 1.0) * float64(p.AltCells) / 4.0
+				height := (p.noise.Eval3(float64(pos[0])*scale, float64(pos[1])*scale, float64(pos[2])*scale) + 1.0) * float64(p.AltCells) / 4.0
 				if float64(altIndex) <= height {
 					c.Material = Rock
 				} else {

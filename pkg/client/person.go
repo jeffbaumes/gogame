@@ -29,7 +29,7 @@ type person struct {
 func newPerson() *person {
 	p := person{}
 	p.walkVel = 5.0
-	p.loc = mgl32.Vec3{45, 0, 0}
+	p.loc = mgl32.Vec3{55, 0, 0}
 	p.lookHeading = mgl32.Vec3{0, 1, 0}
 	p.height = 2
 	p.radius = 0.5

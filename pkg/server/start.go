@@ -98,8 +98,7 @@ func Start(name string, seed, port int) {
 	// err = dec.Decode(&c)
 	// checkErr(err)
 
-	u = NewUniverse(0)
-	p = NewPlanet(u, 10.0, 1.0, 60.0, 80, 64, 16, nil)
+	p = NewPlanet(50.0, 16, 0, nil)
 
 	serverAPI := new(Server)
 	listener, e := net.Listen("tcp", fmt.Sprintf(":%v", port))
