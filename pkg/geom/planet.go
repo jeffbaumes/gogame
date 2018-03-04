@@ -58,6 +58,16 @@ type CellLoc struct {
 
 // GetChunk retrieves the chunk of a planet from chunk indices
 func (p *Planet) GetChunk(ind ChunkIndex) *Chunk {
+	cs := ChunkSize
+	if ind.Lon < 0 || ind.Lon >= p.LonCells/cs {
+		return nil
+	}
+	if ind.Lat < 0 || ind.Lat >= p.LatCells/cs {
+		return nil
+	}
+	if ind.Alt < 0 || ind.Alt >= p.AltCells/cs {
+		return nil
+	}
 	chunk := p.Chunks[ind]
 	if chunk == nil {
 		if p.rpc == nil {
@@ -75,18 +85,45 @@ func (p *Planet) GetChunk(ind ChunkIndex) *Chunk {
 	return chunk
 }
 
+func (p *Planet) validateCellLoc(l CellLoc) CellLoc {
+	if l.Lon < 0 {
+		l.Lon += float32(p.LonCells)
+	}
+	for l.Lon >= float32(p.LonCells) {
+		l.Lon -= float32(p.LonCells)
+	}
+	return l
+}
+
 // CellLocToChunk converts floating-point cell indices to a chunk
 func (p *Planet) CellLocToChunk(l CellLoc) *Chunk {
-	if l.Lon < 0 || l.Lat < 0 || l.Alt < 0 {
+	l = p.validateCellLoc(l)
+	ind := p.CellLocToChunkIndex(l)
+	if ind.Lon < 0 || ind.Lon > p.LonCells/ChunkSize {
 		return nil
 	}
-	if int(l.Lon) >= p.LonCells || int(l.Lat) >= p.LatCells || int(l.Alt) >= p.AltCells {
+	if ind.Lat < 0 || ind.Lat > p.LatCells/ChunkSize {
 		return nil
 	}
+	if ind.Alt < 0 || ind.Alt > p.AltCells/ChunkSize {
+		return nil
+	}
+	return p.GetChunk(ind)
+}
+
+// CellLocToChunkIndex converts floating-point cell indices to a chunk index
+func (p *Planet) CellLocToChunkIndex(l CellLoc) ChunkIndex {
+	l = p.validateCellLoc(l)
 	clon := int(math.Floor(float64(l.Lon))) / ChunkSize
 	clat := int(math.Floor(float64(l.Lat))) / ChunkSize
 	calt := int(math.Floor(float64(l.Alt))) / ChunkSize
-	return p.GetChunk(ChunkIndex{Lon: clon, Lat: clat, Alt: calt})
+	return ChunkIndex{Lon: clon, Lat: clat, Alt: calt}
+}
+
+// CartesianToChunkIndex converts world coordinates to a chunk index
+func (p *Planet) CartesianToChunkIndex(cart mgl32.Vec3) ChunkIndex {
+	l := p.CartesianToCellLoc(cart)
+	return p.CellLocToChunkIndex(l)
 }
 
 // CartesianToChunk converts world coordinates to a chunk
@@ -97,6 +134,7 @@ func (p *Planet) CartesianToChunk(cart mgl32.Vec3) *Chunk {
 
 // CellLocToNearestCellCenter converts floating-point cell indices to the nearest integral indices
 func (p *Planet) CellLocToNearestCellCenter(l CellLoc) CellLoc {
+	l = p.validateCellLoc(l)
 	cLon := float32(math.Floor(float64(l.Lon) + 0.5))
 	cLat := float32(math.Floor(float64(l.Lat) + 0.5))
 	cAlt := float32(math.Floor(float64(l.Alt) + 0.5))
@@ -105,6 +143,7 @@ func (p *Planet) CellLocToNearestCellCenter(l CellLoc) CellLoc {
 
 // CellLocToCell converts floating-point chunk indices to a cell
 func (p *Planet) CellLocToCell(l CellLoc) *Cell {
+	l = p.validateCellLoc(l)
 	chunk := p.CellLocToChunk(l)
 	if chunk == nil {
 		return nil
@@ -141,12 +180,14 @@ func (p *Planet) CartesianToCellLoc(cart mgl32.Vec3) CellLoc {
 
 // CellLocToCartesian converts floating-point cell indices to world coordinates
 func (p *Planet) CellLocToCartesian(l CellLoc) mgl32.Vec3 {
+	l = p.validateCellLoc(l)
 	r, theta, phi := p.CellLocToSpherical(l)
 	return mgl32.SphericalToCartesian(r, theta, phi)
 }
 
 // CellLocToSpherical converts floating-point cell indices to spherical coordinates
 func (p *Planet) CellLocToSpherical(l CellLoc) (r, theta, phi float32) {
+	l = p.validateCellLoc(l)
 	r = l.Alt*float32(p.AltDelta) + float32(p.AltMin)
 	theta = (math.Pi / 180) * ((90.0 - float32(p.LatMax)) + (l.Lat/float32(p.LatCells))*(2.0*float32(p.LatMax)))
 	phi = 2 * math.Pi * l.Lon / float32(p.LonCells)

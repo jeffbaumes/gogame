@@ -27,13 +27,14 @@ const (
 )
 
 var (
-	cursorGrabbed = false
-	player        = newPerson()
-	p             *geom.Planet
-	aspectRatio   = float32(1.0)
-	lastCursor    = mgl64.Vec2{math.NaN(), math.NaN()}
-	g             = 9.8
-	cRPC          *rpc.Client
+	cursorGrabbed  = false
+	renderDistance = 4
+	player         = newPerson()
+	p              *geom.Planet
+	aspectRatio    = float32(1.0)
+	lastCursor     = mgl64.Vec2{math.NaN(), math.NaN()}
+	g              = 9.8
+	cRPC           *rpc.Client
 )
 
 // Start starts a client with the given username, host, and port
@@ -222,6 +223,20 @@ func projectToPlane(v mgl32.Vec3, n mgl32.Vec3) mgl32.Vec3 {
 	return v.Sub(project(v, n))
 }
 
+func min(val, a int) int {
+	if val < a {
+		return val
+	}
+	return a
+}
+
+func max(val, a int) int {
+	if val > a {
+		return val
+	}
+	return a
+}
+
 func draw(h float32, window *glfw.Window, program uint32, projection int32) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.UseProgram(program)
@@ -249,16 +264,24 @@ func draw(h float32, window *glfw.Window, program uint32, projection int32) {
 		// log.Println(r, theta/math.Pi*180, phi/math.Pi*180)
 		feetCell := p.CartesianToCell(feet)
 
-		// cLon, cLat, cAlt := p.CartesianToChunkIndex(feet)
+		ind := p.CartesianToChunkIndex(feet)
 
-		// for lon := 0; lon < p.LonCells/ChunkSize; lon++ {
-		// 	log.Printf("%v of %v", lon, p.LonCells/ChunkSize)
-		// 	for lat := 0; lat < p.LatCells/ChunkSize; lat++ {
-		// 		for alt := 0; alt < p.AltCells/ChunkSize; alt++ {
-		// 			p.GetChunk(lon, lat, alt)
-		// 		}
-		// 	}
-		// }
+		for lon := ind.Lon - renderDistance; lon <= ind.Lon+renderDistance; lon++ {
+			validLon := lon
+			for validLon < 0 {
+				validLon += p.LonCells / geom.ChunkSize
+			}
+			for validLon >= p.LonCells/geom.ChunkSize {
+				validLon -= p.LonCells / geom.ChunkSize
+			}
+			latMin := max(ind.Lat-renderDistance, 0)
+			latMax := min(ind.Lat+renderDistance, p.LatCells/geom.ChunkSize-1)
+			for lat := latMin; lat <= latMax; lat++ {
+				for alt := 0; alt < p.AltCells/geom.ChunkSize; alt++ {
+					p.GetChunk(geom.ChunkIndex{Lon: validLon, Lat: lat, Alt: alt})
+				}
+			}
+		}
 
 		falling := feetCell == nil || feetCell.Material == geom.Air
 		if falling {
