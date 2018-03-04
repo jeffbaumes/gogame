@@ -43,16 +43,16 @@ func NewPlanet(radius float64, altCells, seed int, crpc *rpc.Client) *Planet {
 	p.AltCells = altCells / ChunkSize * ChunkSize
 	p.Chunks = make(map[ChunkKey]*Chunk)
 	p.rpc = crpc
-	if crpc != nil {
-		for lon := 0; lon < p.LonCells/ChunkSize; lon++ {
-			log.Printf("%v of %v", lon, p.LonCells/ChunkSize)
-			for lat := 0; lat < p.LatCells/ChunkSize; lat++ {
-				for alt := 0; alt < p.AltCells/ChunkSize; alt++ {
-					p.GetChunk(lon, lat, alt)
-				}
-			}
-		}
-	}
+	// if crpc != nil {
+	// 	for lon := 0; lon < p.LonCells/ChunkSize; lon++ {
+	// 		log.Printf("%v of %v", lon, p.LonCells/ChunkSize)
+	// 		for lat := 0; lat < p.LatCells/ChunkSize; lat++ {
+	// 			for alt := 0; alt < p.AltCells/ChunkSize; alt++ {
+	// 				p.GetChunk(lon, lat, alt)
+	// 			}
+	// 		}
+	// 	}
+	// }
 	return &p
 }
 

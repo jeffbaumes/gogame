@@ -115,5 +115,5 @@ func initChunkGraphics(c *server.Chunk, p *server.Planet, lonIndex, latIndex, al
 func drawChunk(chunk *server.Chunk) {
 	gl.BindVertexArray(chunk.Drawable)
 	cs := server.ChunkSize
-	gl.DrawArrays(gl.LINES, 0, int32(cs*cs*cs*len(square)/3))
+	gl.DrawArrays(gl.TRIANGLES, 0, int32(cs*cs*cs*len(square)/3))
 }
