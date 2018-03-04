@@ -73,8 +73,10 @@ func Start(username, host string, port int) {
 	window.SetSizeCallback(windowSizeCallback)
 	window.SetMouseButtonCallback(mouseButtonCallback)
 	defer glfw.Terminate()
-	program := initOpenGL()
+	program, hudProgram := initOpenGL()
+	initHUD()
 	projection := uniformLocation(program, "proj")
+	hudProjection := uniformLocation(hudProgram, "proj")
 
 	p = geom.NewPlanet(50.0, 16, 0, cRPC)
 	t := time.Now()
@@ -82,7 +84,7 @@ func Start(username, host string, port int) {
 		h := float32(time.Since(t)) / float32(time.Second)
 		t = time.Now()
 
-		draw(h, window, program, projection)
+		draw(h, window, program, hudProgram, projection, hudProjection)
 
 		time.Sleep(time.Second/time.Duration(fps) - time.Since(t))
 	}
@@ -160,10 +162,12 @@ func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action,
 	}
 }
 
-func windowSizeCallback(w *glfw.Window, width, height int) {
-	aspectRatio = float32(width) / float32(height)
+func windowSizeCallback(w *glfw.Window, wd, ht int) {
+	aspectRatio = float32(wd) / float32(ht)
 	fwidth, fheight := w.GetFramebufferSize()
 	gl.Viewport(0, 0, int32(fwidth), int32(fheight))
+	width = wd
+	height = ht
 }
 
 func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
@@ -175,7 +179,8 @@ func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Ac
 				pos = pos.Add(increment)
 				cell := p.CartesianToCell(pos)
 				if cell != nil && cell.Material != geom.Air {
-					cell.Material = geom.Air
+					cellIndex := p.CartesianToCellIndex(pos)
+					p.SetCellMaterial(cellIndex, geom.Air)
 					chunk := p.CartesianToChunk(pos)
 					chunk.GraphicsInitialized = false
 					break
@@ -184,18 +189,22 @@ func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Ac
 		} else if action == glfw.Press && button == glfw.MouseButtonRight {
 			increment := player.lookDir().Mul(0.05)
 			pos := player.loc
-			var prevCell, cell *geom.Cell
+			prevCellIndex := geom.CellIndex{Lon: -1, Lat: -1, Alt: -1}
+			cellIndex := geom.CellIndex{}
 			for i := 0; i < 100; i++ {
 				pos = pos.Add(increment)
-				next := p.CartesianToCell(pos)
-				if next != cell {
-					prevCell = cell
-					cell = next
+				nextCellIndex := p.CartesianToCellIndex(pos)
+				if nextCellIndex != cellIndex {
+					prevCellIndex = cellIndex
+					cellIndex = nextCellIndex
+					cell := p.CellIndexToCell(cellIndex)
 					if cell != nil && cell.Material != geom.Air {
-						if prevCell != nil {
-							prevCell.Material = geom.Rock
-							chunk := p.CartesianToChunk(pos)
-							chunk.GraphicsInitialized = false
+						if prevCellIndex.Lon != -1 {
+							p.SetCellMaterial(prevCellIndex, geom.Rock)
+							chunk := p.CellIndexToChunk(prevCellIndex)
+							if chunk != nil {
+								chunk.GraphicsInitialized = false
+							}
 						}
 						break
 					}
@@ -237,7 +246,7 @@ func max(val, a int) int {
 	return a
 }
 
-func draw(h float32, window *glfw.Window, program uint32, projection int32) {
+func draw(h float32, window *glfw.Window, program, hudProgram uint32, projection, hudProjection int32) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.UseProgram(program)
 
@@ -248,6 +257,13 @@ func draw(h float32, window *glfw.Window, program uint32, projection int32) {
 	gl.UniformMatrix4fv(projection, 1, false, &proj[0])
 
 	drawPlanet(p)
+
+	gl.UseProgram(hudProgram)
+
+	projHUD := mgl32.Scale3D(1/float32(width), 1/float32(height), 1.0)
+	gl.UniformMatrix4fv(hudProjection, 1, false, &projHUD[0])
+
+	drawHUD()
 
 	if !cursorGrabbed {
 		glfw.PollEvents()

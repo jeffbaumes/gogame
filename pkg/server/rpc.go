@@ -13,3 +13,15 @@ func (t *Server) GetChunk(args *geom.ChunkIndex, chunk *geom.Chunk) error {
 	}
 	return nil
 }
+
+// SetCellMaterialArgs contains the arguments for the SetCellMaterial RPC call
+type SetCellMaterialArgs struct {
+	ind      geom.CellIndex
+	material int
+}
+
+// SetCellMaterial sets the material for a particular cell
+func (t *Server) SetCellMaterial(args *SetCellMaterialArgs, ret *bool) error {
+	*ret = p.SetCellMaterial(args.ind, args.material)
+	return nil
+}

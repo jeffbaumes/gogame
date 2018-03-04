@@ -39,7 +39,7 @@ func Start(name string, seed, port int) {
 	checkErr(err)
 	_, err = stmt.Exec()
 	checkErr(err)
-	stmt, err = db.Prepare("CREATE TABLE IF NOT EXISTS user (name TEXT PRIMARY KEY, data BLOB)")
+	stmt, err = db.Prepare("CREATE TABLE IF NOT EXISTS player (name TEXT PRIMARY KEY, data BLOB)")
 	checkErr(err)
 	_, err = stmt.Exec()
 	checkErr(err)

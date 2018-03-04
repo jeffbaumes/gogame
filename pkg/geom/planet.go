@@ -51,6 +51,11 @@ type ChunkIndex struct {
 	Lon, Lat, Alt int
 }
 
+// CellIndex stores the latitude, longitude, and altitude index of a cell
+type CellIndex struct {
+	Lon, Lat, Alt int
+}
+
 // CellLoc stores the latitude, longitude, and altitude of a position in cell coordinates
 type CellLoc struct {
 	Lon, Lat, Alt float32
@@ -85,6 +90,16 @@ func (p *Planet) GetChunk(ind ChunkIndex) *Chunk {
 	return chunk
 }
 
+// SetCellMaterial sets the material for a cell
+func (p *Planet) SetCellMaterial(ind CellIndex, material int) bool {
+	cell := p.CellIndexToCell(ind)
+	if cell == nil {
+		return false
+	}
+	cell.Material = material
+	return true
+}
+
 func (p *Planet) validateCellLoc(l CellLoc) CellLoc {
 	if l.Lon < 0 {
 		l.Lon += float32(p.LonCells)
@@ -98,7 +113,12 @@ func (p *Planet) validateCellLoc(l CellLoc) CellLoc {
 // CellLocToChunk converts floating-point cell indices to a chunk
 func (p *Planet) CellLocToChunk(l CellLoc) *Chunk {
 	l = p.validateCellLoc(l)
-	ind := p.CellLocToChunkIndex(l)
+	return p.CellIndexToChunk(p.CellLocToCellIndex(l))
+}
+
+// CellIndexToChunk converts a cell index to its containing chunk
+func (p *Planet) CellIndexToChunk(cellIndex CellIndex) *Chunk {
+	ind := p.CellIndexToChunkIndex(cellIndex)
 	if ind.Lon < 0 || ind.Lon > p.LonCells/ChunkSize {
 		return nil
 	}
@@ -114,10 +134,24 @@ func (p *Planet) CellLocToChunk(l CellLoc) *Chunk {
 // CellLocToChunkIndex converts floating-point cell indices to a chunk index
 func (p *Planet) CellLocToChunkIndex(l CellLoc) ChunkIndex {
 	l = p.validateCellLoc(l)
-	clon := int(math.Floor(float64(l.Lon))) / ChunkSize
-	clat := int(math.Floor(float64(l.Lat))) / ChunkSize
-	calt := int(math.Floor(float64(l.Alt))) / ChunkSize
-	return ChunkIndex{Lon: clon, Lat: clat, Alt: calt}
+	return p.CellIndexToChunkIndex(p.CellLocToCellIndex(l))
+}
+
+// CellIndexToChunkIndex converts a cell index to its containing chunk index
+func (p *Planet) CellIndexToChunkIndex(cellInd CellIndex) ChunkIndex {
+	return ChunkIndex{
+		Lon: cellInd.Lon / ChunkSize,
+		Lat: cellInd.Lat / ChunkSize,
+		Alt: cellInd.Alt / ChunkSize,
+	}
+}
+
+// CellLocToCellIndex converts floating-point cell indices to a cell index
+func (p *Planet) CellLocToCellIndex(l CellLoc) CellIndex {
+	l = p.validateCellLoc(l)
+	l = p.CellLocToNearestCellCenter(l)
+	l = p.validateCellLoc(l)
+	return CellIndex{Lon: int(l.Lon), Lat: int(l.Lat), Alt: int(l.Alt)}
 }
 
 // CartesianToChunkIndex converts world coordinates to a chunk index
@@ -126,31 +160,41 @@ func (p *Planet) CartesianToChunkIndex(cart mgl32.Vec3) ChunkIndex {
 	return p.CellLocToChunkIndex(l)
 }
 
+// CartesianToCellIndex converts world coordinates to a cell index
+func (p *Planet) CartesianToCellIndex(cart mgl32.Vec3) CellIndex {
+	return p.CellLocToCellIndex(p.CartesianToCellLoc(cart))
+}
+
 // CartesianToChunk converts world coordinates to a chunk
 func (p *Planet) CartesianToChunk(cart mgl32.Vec3) *Chunk {
-	l := p.CartesianToCellLoc(cart)
-	return p.CellLocToChunk(l)
+	return p.CellLocToChunk(p.CartesianToCellLoc(cart))
 }
 
 // CellLocToNearestCellCenter converts floating-point cell indices to the nearest integral indices
 func (p *Planet) CellLocToNearestCellCenter(l CellLoc) CellLoc {
 	l = p.validateCellLoc(l)
-	cLon := float32(math.Floor(float64(l.Lon) + 0.5))
-	cLat := float32(math.Floor(float64(l.Lat) + 0.5))
-	cAlt := float32(math.Floor(float64(l.Alt) + 0.5))
-	return CellLoc{Lon: cLon, Lat: cLat, Alt: cAlt}
+	return CellLoc{
+		Lon: float32(math.Floor(float64(l.Lon) + 0.5)),
+		Lat: float32(math.Floor(float64(l.Lat) + 0.5)),
+		Alt: float32(math.Floor(float64(l.Alt) + 0.5)),
+	}
 }
 
 // CellLocToCell converts floating-point chunk indices to a cell
 func (p *Planet) CellLocToCell(l CellLoc) *Cell {
 	l = p.validateCellLoc(l)
-	chunk := p.CellLocToChunk(l)
+	return p.CellIndexToCell(p.CellLocToCellIndex(l))
+}
+
+// CellIndexToCell converts a cell index to a cell
+func (p *Planet) CellIndexToCell(cellIndex CellIndex) *Cell {
+	chunk := p.CellIndexToChunk(cellIndex)
 	if chunk == nil {
 		return nil
 	}
-	lonInd := int(l.Lon) % ChunkSize
-	latInd := int(l.Lat) % ChunkSize
-	altInd := int(l.Alt) % ChunkSize
+	lonInd := cellIndex.Lon % ChunkSize
+	latInd := cellIndex.Lat % ChunkSize
+	altInd := cellIndex.Alt % ChunkSize
 	return chunk.Cells[lonInd][latInd][altInd]
 }
 

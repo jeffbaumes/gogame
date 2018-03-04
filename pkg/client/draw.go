@@ -56,6 +56,7 @@ var (
 		-0.5, -0.5, 0.5,
 		0.5, -0.5, 0.5,
 	}
+	hudDrawable uint32
 )
 
 func drawPlanet(p *geom.Planet) {
@@ -118,4 +119,20 @@ func drawChunk(chunk *geom.Chunk) {
 	gl.BindVertexArray(chunk.Drawable)
 	cs := geom.ChunkSize
 	gl.DrawArrays(gl.TRIANGLES, 0, int32(cs*cs*cs*len(square)/3))
+}
+
+func initHUD() {
+	points := []float32{
+		-20.0, 0.0, 0.0,
+		19.0, 0.0, 0.0,
+
+		0.0, -20.0, 0.0,
+		0.0, 19.0, 0.0,
+	}
+	hudDrawable = makePointsVao(points)
+}
+
+func drawHUD() {
+	gl.BindVertexArray(hudDrawable)
+	gl.DrawArrays(gl.LINES, 0, 4)
 }

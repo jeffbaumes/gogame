@@ -9,10 +9,12 @@ import (
 	"github.com/go-gl/glfw/v3.2/glfw"
 )
 
-const (
+var (
 	width  = 500
 	height = 500
+)
 
+const (
 	vertexShaderSource = `
 		#version 410
 		in vec3 vp;
@@ -45,6 +47,23 @@ const (
 			frag_color = vec4(light, 1.0);
 		}
 	` + "\x00"
+
+	vertexShaderSourceHUD = `
+		#version 410
+		in vec3 vp;
+		uniform mat4 proj;
+		void main() {
+			gl_Position = proj * vec4(vp, 1.0);
+		}
+	` + "\x00"
+
+	fragmentShaderSourceHUD = `
+		#version 410
+		out vec4 frag_color;
+		void main() {
+			frag_color = vec4(1.0, 1.0, 1.0, 1.0);
+		}
+	` + "\x00"
 )
 
 func initGlfw() *glfw.Window {
@@ -65,7 +84,7 @@ func initGlfw() *glfw.Window {
 	return window
 }
 
-func initOpenGL() uint32 {
+func initOpenGL() (program, hudProgram uint32) {
 	if err := gl.Init(); err != nil {
 		panic(err)
 	}
@@ -86,17 +105,48 @@ func initOpenGL() uint32 {
 		panic(err)
 	}
 
-	prog := gl.CreateProgram()
-	gl.AttachShader(prog, vertexShader)
-	gl.AttachShader(prog, fragmentShader)
-	bindAttribute(prog, 0, "vp")
-	bindAttribute(prog, 1, "n")
-	gl.LinkProgram(prog)
+	program = gl.CreateProgram()
+	gl.AttachShader(program, vertexShader)
+	gl.AttachShader(program, fragmentShader)
+	bindAttribute(program, 0, "vp")
+	bindAttribute(program, 1, "n")
+	gl.LinkProgram(program)
 
-	return prog
+	vertexShaderHUD, err := compileShader(vertexShaderSourceHUD, gl.VERTEX_SHADER)
+	if err != nil {
+		panic(err)
+	}
+
+	fragmentShaderHUD, err := compileShader(fragmentShaderSourceHUD, gl.FRAGMENT_SHADER)
+	if err != nil {
+		panic(err)
+	}
+
+	hudProgram = gl.CreateProgram()
+	gl.AttachShader(hudProgram, vertexShaderHUD)
+	gl.AttachShader(hudProgram, fragmentShaderHUD)
+	bindAttribute(hudProgram, 0, "vp")
+	gl.LinkProgram(hudProgram)
+
+	return
 }
 
-// MakeVao creates two buffers for the points and normals and returns a VAO for both
+func makePointsVao(points []float32) uint32 {
+	var vbo = make([]uint32, 2)
+	gl.GenBuffers(1, (*uint32)(gl.Ptr(vbo)))
+	gl.BindBuffer(gl.ARRAY_BUFFER, vbo[0])
+	gl.BufferData(gl.ARRAY_BUFFER, 4*len(points), gl.Ptr(points), gl.STATIC_DRAW)
+
+	var vao uint32
+	gl.GenVertexArrays(1, &vao)
+	gl.BindVertexArray(vao)
+	gl.EnableVertexAttribArray(0)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vbo[0])
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 0, nil)
+
+	return vao
+}
+
 func makeVao(points []float32, normals []float32) uint32 {
 	var vbo = make([]uint32, 2)
 	gl.GenBuffers(2, (*uint32)(gl.Ptr(vbo)))
