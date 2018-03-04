@@ -3,7 +3,7 @@ package client
 import (
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
-	"github.com/jeffbaumes/gogame/pkg/server"
+	"github.com/jeffbaumes/gogame/pkg/geom"
 )
 
 var (
@@ -58,7 +58,7 @@ var (
 	}
 )
 
-func drawPlanet(p *server.Planet) {
+func drawPlanet(p *geom.Planet) {
 	for key, chunk := range p.Chunks {
 		if !chunk.GraphicsInitialized {
 			initChunkGraphics(chunk, p, key.Lon, key.Lat, key.Alt)
@@ -67,21 +67,23 @@ func drawPlanet(p *server.Planet) {
 	}
 }
 
-func initChunkGraphics(c *server.Chunk, p *server.Planet, lonIndex, latIndex, altIndex int) {
-	cs := server.ChunkSize
+func initChunkGraphics(c *geom.Chunk, p *geom.Planet, lonIndex, latIndex, altIndex int) {
+	cs := geom.ChunkSize
 	points := []float32{}
 	normals := []float32{}
 
 	for cLon := 0; cLon < cs; cLon++ {
 		for cLat := 0; cLat < cs; cLat++ {
 			for cAlt := 0; cAlt < cs; cAlt++ {
-				if c.Cells[cLon][cLat][cAlt].Material != server.Air {
+				if c.Cells[cLon][cLat][cAlt].Material != geom.Air {
 					pts := make([]float32, len(square))
 					for i := 0; i < len(square); i += 3 {
-						lonVal := float32(cs*lonIndex+cLon) + square[i]
-						latVal := float32(cs*latIndex+cLat) + square[i+1]
-						altVal := float32(cs*altIndex+cAlt) + square[i+2]
-						r, theta, phi := p.IndexToSpherical(lonVal, latVal, altVal)
+						l := geom.CellLoc{
+							Lon: float32(cs*lonIndex+cLon) + square[i+0],
+							Lat: float32(cs*latIndex+cLat) + square[i+1],
+							Alt: float32(cs*altIndex+cAlt) + square[i+2],
+						}
+						r, theta, phi := p.CellLocToSpherical(l)
 						cart := mgl32.SphericalToCartesian(r, theta, phi)
 						pts[i] = cart[0]
 						pts[i+1] = cart[1]
@@ -112,8 +114,8 @@ func initChunkGraphics(c *server.Chunk, p *server.Planet, lonIndex, latIndex, al
 	c.GraphicsInitialized = true
 }
 
-func drawChunk(chunk *server.Chunk) {
+func drawChunk(chunk *geom.Chunk) {
 	gl.BindVertexArray(chunk.Drawable)
-	cs := server.ChunkSize
+	cs := geom.ChunkSize
 	gl.DrawArrays(gl.TRIANGLES, 0, int32(cs*cs*cs*len(square)/3))
 }

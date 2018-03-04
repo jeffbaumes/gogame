@@ -13,7 +13,7 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/hashicorp/yamux"
-	"github.com/jeffbaumes/gogame/pkg/server"
+	"github.com/jeffbaumes/gogame/pkg/geom"
 )
 
 const (
@@ -29,7 +29,7 @@ const (
 var (
 	cursorGrabbed = false
 	player        = newPerson()
-	p             *server.Planet
+	p             *geom.Planet
 	aspectRatio   = float32(1.0)
 	lastCursor    = mgl64.Vec2{math.NaN(), math.NaN()}
 	g             = 9.8
@@ -75,7 +75,7 @@ func Start(username, host string, port int) {
 	program := initOpenGL()
 	projection := uniformLocation(program, "proj")
 
-	p = server.NewPlanet(50.0, 16, 0, cRPC)
+	p = geom.NewPlanet(50.0, 16, 0, cRPC)
 	t := time.Now()
 	for !window.ShouldClose() {
 		h := float32(time.Since(t)) / float32(time.Second)
@@ -173,8 +173,8 @@ func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Ac
 			for i := 0; i < 100; i++ {
 				pos = pos.Add(increment)
 				cell := p.CartesianToCell(pos)
-				if cell != nil && cell.Material != server.Air {
-					cell.Material = server.Air
+				if cell != nil && cell.Material != geom.Air {
+					cell.Material = geom.Air
 					chunk := p.CartesianToChunk(pos)
 					chunk.GraphicsInitialized = false
 					break
@@ -183,16 +183,16 @@ func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Ac
 		} else if action == glfw.Press && button == glfw.MouseButtonRight {
 			increment := player.lookDir().Mul(0.05)
 			pos := player.loc
-			var prevCell, cell *server.Cell
+			var prevCell, cell *geom.Cell
 			for i := 0; i < 100; i++ {
 				pos = pos.Add(increment)
 				next := p.CartesianToCell(pos)
 				if next != cell {
 					prevCell = cell
 					cell = next
-					if cell != nil && cell.Material != server.Air {
+					if cell != nil && cell.Material != geom.Air {
 						if prevCell != nil {
-							prevCell.Material = server.Rock
+							prevCell.Material = geom.Rock
 							chunk := p.CartesianToChunk(pos)
 							chunk.GraphicsInitialized = false
 						}
@@ -248,7 +248,19 @@ func draw(h float32, window *glfw.Window, program uint32, projection int32) {
 		// r, theta, phi := mgl32.CartesianToSpherical(feet)
 		// log.Println(r, theta/math.Pi*180, phi/math.Pi*180)
 		feetCell := p.CartesianToCell(feet)
-		falling := feetCell == nil || feetCell.Material == server.Air
+
+		// cLon, cLat, cAlt := p.CartesianToChunkIndex(feet)
+
+		// for lon := 0; lon < p.LonCells/ChunkSize; lon++ {
+		// 	log.Printf("%v of %v", lon, p.LonCells/ChunkSize)
+		// 	for lat := 0; lat < p.LatCells/ChunkSize; lat++ {
+		// 		for alt := 0; alt < p.AltCells/ChunkSize; alt++ {
+		// 			p.GetChunk(lon, lat, alt)
+		// 		}
+		// 	}
+		// }
+
+		falling := feetCell == nil || feetCell.Material == geom.Air
 		if falling {
 			player.fallVel -= 20 * h
 		} else if player.holdingJump && !player.inJump {
@@ -266,11 +278,11 @@ func draw(h float32, window *glfw.Window, program uint32, projection int32) {
 
 		player.loc = player.loc.Add(playerVel.Mul(h))
 		for height := p.AltDelta / 2; height < player.height; height += p.AltDelta {
-			player.collide(p, float32(height), 0, 0, -1)
-			player.collide(p, float32(height), 1, 0, 0)
-			player.collide(p, float32(height), -1, 0, 0)
-			player.collide(p, float32(height), 0, 1, 0)
-			player.collide(p, float32(height), 0, -1, 0)
+			player.collide(p, float32(height), geom.CellLoc{Lon: 0, Lat: 0, Alt: -1})
+			player.collide(p, float32(height), geom.CellLoc{Lon: 1, Lat: 0, Alt: 0})
+			player.collide(p, float32(height), geom.CellLoc{Lon: -1, Lat: 0, Alt: 0})
+			player.collide(p, float32(height), geom.CellLoc{Lon: 0, Lat: 1, Alt: 0})
+			player.collide(p, float32(height), geom.CellLoc{Lon: 0, Lat: -1, Alt: 0})
 		}
 	} else if player.gameMode == flying {
 		player.loc = player.loc.Add(up.Mul((player.upVel - player.downVel) * h))

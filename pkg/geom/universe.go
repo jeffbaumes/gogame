@@ -1,4 +1,4 @@
-package server
+package geom
 
 import (
 	opensimplex "github.com/ojrac/opensimplex-go"

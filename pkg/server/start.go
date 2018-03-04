@@ -9,12 +9,13 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/yamux"
+	"github.com/jeffbaumes/gogame/pkg/geom"
 	_ "github.com/mattn/go-sqlite3" // Needed to use sqlite
 )
 
 var (
-	u    *Universe
-	p    *Planet
+	u    *geom.Universe
+	p    *geom.Planet
 	cRPC *rpc.Client
 )
 
@@ -98,7 +99,7 @@ func Start(name string, seed, port int) {
 	// err = dec.Decode(&c)
 	// checkErr(err)
 
-	p = NewPlanet(50.0, 16, 0, nil)
+	p = geom.NewPlanet(50.0, 16, 0, nil)
 
 	serverAPI := new(Server)
 	listener, e := net.Listen("tcp", fmt.Sprintf(":%v", port))
@@ -131,5 +132,11 @@ func Start(name string, seed, port int) {
 			panic(e)
 		}
 		cRPC = rpc.NewClient(stream)
+	}
+}
+
+func checkErr(err error) {
+	if err != nil {
+		panic(err)
 	}
 }

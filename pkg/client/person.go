@@ -4,7 +4,7 @@ import (
 	"math"
 
 	"github.com/go-gl/mathgl/mgl32"
-	"github.com/jeffbaumes/gogame/pkg/server"
+	"github.com/jeffbaumes/gogame/pkg/geom"
 )
 
 type person struct {
@@ -44,23 +44,39 @@ func (player *person) lookDir() mgl32.Vec3 {
 	return mgl32.QuatRotate(float32((player.lookAltitude-90.0)*math.Pi/180.0), right).Rotate(up)
 }
 
-func (player *person) collide(p *server.Planet, height, dLon, dLat, dAlt float32) {
+func (player *person) collide(p *geom.Planet, height float32, d geom.CellLoc) {
 	up := player.loc.Normalize()
 	pos := player.loc.Sub(up.Mul(float32(player.height) - height))
-	lon, lat, alt := p.CartesianToIndex(pos)
-	cLon, cLat, cAlt := p.IndexToCellCenterIndex(lon, lat, alt)
-	adjCell := p.IndexToCell(cLon+dLon, cLat+dLat, cAlt+dAlt)
-	if adjCell != nil && adjCell.Material != server.Air {
-		if dAlt != 0 {
-			nLoc := p.IndexToCartesian(cLon+dLon/2, cLat+dLat/2, cAlt+dAlt/2)
+	l := p.CartesianToCellLoc(pos)
+	c := p.CellLocToNearestCellCenter(l)
+	adjCell := p.CellLocToCell(geom.CellLoc{
+		Lon: c.Lon + d.Lon,
+		Lat: c.Lat + d.Lat,
+		Alt: c.Alt + d.Alt,
+	})
+	if adjCell != nil && adjCell.Material != geom.Air {
+		if d.Alt != 0 {
+			nLoc := p.CellLocToCartesian(geom.CellLoc{
+				Lon: c.Lon + d.Lon/2,
+				Lat: c.Lat + d.Lat/2,
+				Alt: c.Alt + d.Alt/2,
+			})
 			distToPlane := up.Dot(pos.Sub(nLoc))
 			if distToPlane < 0 {
 				move := -distToPlane
 				player.loc = player.loc.Add(up.Mul(move))
 			}
 		} else {
-			nLoc := p.IndexToCartesian(cLon+dLon/2, cLat+dLat/2, cAlt+dAlt/2)
-			aLoc := p.IndexToCartesian(cLon+dLon, cLat+dLat, cAlt+dAlt)
+			nLoc := p.CellLocToCartesian(geom.CellLoc{
+				Lon: c.Lon + d.Lon/2,
+				Lat: c.Lat + d.Lat/2,
+				Alt: c.Alt + d.Alt/2,
+			})
+			aLoc := p.CellLocToCartesian(geom.CellLoc{
+				Lon: c.Lon + d.Lon,
+				Lat: c.Lat + d.Lat,
+				Alt: c.Alt + d.Alt,
+			})
 			cNorm := nLoc.Sub(aLoc).Normalize()
 			cNorm = cNorm.Sub(project(cNorm, up)).Normalize()
 			distToPlane := cNorm.Dot(pos.Sub(nLoc))
