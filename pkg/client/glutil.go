@@ -64,6 +64,30 @@ const (
 			frag_color = vec4(1.0, 1.0, 1.0, 1.0);
 		}
 	` + "\x00"
+
+	vertexShaderSourceText = `
+		#version 410
+
+		in vec4 coord;
+		out vec2 texcoord;
+
+		void main(void) {
+			gl_Position = vec4(coord.xy, 0, 1);
+			texcoord = coord.zw;
+		}
+	` + "\x00"
+
+	fragmentShaderSourceText = `
+		#version 410
+
+		in vec2 texcoord;
+		uniform sampler2D tex;
+		out vec4 frag_color;
+
+		void main(void) {
+			frag_color = texture(tex, texcoord);
+		}
+	` + "\x00"
 )
 
 func initGlfw() *glfw.Window {
@@ -84,7 +108,7 @@ func initGlfw() *glfw.Window {
 	return window
 }
 
-func initOpenGL() (program, hudProgram uint32) {
+func initOpenGL() (program, hudProgram, textProgram uint32) {
 	if err := gl.Init(); err != nil {
 		panic(err)
 	}
@@ -94,6 +118,8 @@ func initOpenGL() (program, hudProgram uint32) {
 	gl.Enable(gl.DEPTH_TEST)
 	// gl.Enable(gl.POLYGON_OFFSET_FILL)
 	// gl.PolygonOffset(2, 0)
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
 	vertexShader, err := compileShader(vertexShaderSource, gl.VERTEX_SHADER)
 	if err != nil {
@@ -116,22 +142,34 @@ func initOpenGL() (program, hudProgram uint32) {
 	if err != nil {
 		panic(err)
 	}
-
 	fragmentShaderHUD, err := compileShader(fragmentShaderSourceHUD, gl.FRAGMENT_SHADER)
 	if err != nil {
 		panic(err)
 	}
-
 	hudProgram = gl.CreateProgram()
 	gl.AttachShader(hudProgram, vertexShaderHUD)
 	gl.AttachShader(hudProgram, fragmentShaderHUD)
 	bindAttribute(hudProgram, 0, "vp")
 	gl.LinkProgram(hudProgram)
 
+	vertexShaderText, err := compileShader(vertexShaderSourceText, gl.VERTEX_SHADER)
+	if err != nil {
+		panic(err)
+	}
+	fragmentShaderText, err := compileShader(fragmentShaderSourceText, gl.FRAGMENT_SHADER)
+	if err != nil {
+		panic(err)
+	}
+	textProgram = gl.CreateProgram()
+	gl.AttachShader(textProgram, vertexShaderText)
+	gl.AttachShader(textProgram, fragmentShaderText)
+	bindAttribute(textProgram, 0, "coord")
+	gl.LinkProgram(textProgram)
+
 	return
 }
 
-func makePointsVao(points []float32) uint32 {
+func makePointsVao(points []float32, size int32) uint32 {
 	var vbo = make([]uint32, 2)
 	gl.GenBuffers(1, (*uint32)(gl.Ptr(vbo)))
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo[0])
@@ -142,7 +180,7 @@ func makePointsVao(points []float32) uint32 {
 	gl.BindVertexArray(vao)
 	gl.EnableVertexAttribArray(0)
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo[0])
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 0, nil)
+	gl.VertexAttribPointer(0, size, gl.FLOAT, false, 0, nil)
 
 	return vao
 }

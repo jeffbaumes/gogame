@@ -73,10 +73,12 @@ func Start(username, host string, port int) {
 	window.SetSizeCallback(windowSizeCallback)
 	window.SetMouseButtonCallback(mouseButtonCallback)
 	defer glfw.Terminate()
-	program, hudProgram := initOpenGL()
+	program, hudProgram, textProgram := initOpenGL()
 	initHUD()
+	initText()
 	projection := uniformLocation(program, "proj")
 	hudProjection := uniformLocation(hudProgram, "proj")
+	textTexture := uniformLocation(textProgram, "texture")
 
 	p = geom.NewPlanet(50.0, 16, 0, cRPC)
 	t := time.Now()
@@ -84,7 +86,7 @@ func Start(username, host string, port int) {
 		h := float32(time.Since(t)) / float32(time.Second)
 		t = time.Now()
 
-		draw(h, window, program, hudProgram, projection, hudProjection)
+		drawFrame(h, window, program, hudProgram, textProgram, projection, hudProjection, textTexture)
 
 		time.Sleep(time.Second/time.Duration(fps) - time.Since(t))
 	}
@@ -246,24 +248,25 @@ func max(val, a int) int {
 	return a
 }
 
-func draw(h float32, window *glfw.Window, program, hudProgram uint32, projection, hudProjection int32) {
+func drawFrame(h float32, window *glfw.Window, program, hudProgram, textProgram uint32, projection, hudProjection, textTexture int32) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-	gl.UseProgram(program)
 
+	gl.UseProgram(program)
 	lookDir := player.lookDir()
 	view := mgl32.LookAtV(player.loc, player.loc.Add(lookDir), player.loc.Normalize())
 	perspective := mgl32.Perspective(45, aspectRatio, 0.01, 1000)
 	proj := perspective.Mul4(view)
 	gl.UniformMatrix4fv(projection, 1, false, &proj[0])
-
 	drawPlanet(p)
 
 	gl.UseProgram(hudProgram)
-
 	projHUD := mgl32.Scale3D(1/float32(width), 1/float32(height), 1.0)
 	gl.UniformMatrix4fv(hudProjection, 1, false, &projHUD[0])
-
 	drawHUD()
+
+	gl.UseProgram(textProgram)
+	gl.Uniform1i(textTexture, int32(textTextureValue))
+	drawText()
 
 	if !cursorGrabbed {
 		glfw.PollEvents()

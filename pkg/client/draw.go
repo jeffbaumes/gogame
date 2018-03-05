@@ -1,6 +1,11 @@
 package client
 
 import (
+	"image"
+	"image/draw"
+	"image/png"
+	"os"
+
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/jeffbaumes/gogame/pkg/geom"
@@ -56,7 +61,9 @@ var (
 		-0.5, -0.5, 0.5,
 		0.5, -0.5, 0.5,
 	}
-	hudDrawable uint32
+	hudDrawable      uint32
+	textDrawable     uint32
+	textTextureValue uint32
 )
 
 func drawPlanet(p *geom.Planet) {
@@ -129,10 +136,66 @@ func initHUD() {
 		0.0, -20.0, 0.0,
 		0.0, 19.0, 0.0,
 	}
-	hudDrawable = makePointsVao(points)
+	hudDrawable = makePointsVao(points, 3)
 }
 
 func drawHUD() {
 	gl.BindVertexArray(hudDrawable)
 	gl.DrawArrays(gl.LINES, 0, 4)
+}
+
+func initText() {
+	points := []float32{
+		0.0, 0.0, 0.0, 0.0,
+		0.0, 0.5, 0.0, 1.0,
+		0.5, 0.5, 1.0, 1.0,
+
+		0.5, 0.5, 1.0, 1.0,
+		0.5, 0.0, 1.0, 0.0,
+		0.0, 0.0, 0.0, 0.0,
+	}
+	textDrawable = makePointsVao(points, 4)
+
+	// Generated from https://evanw.github.io/font-texture-generator/
+	// Inconsolata font (installed on system with Google Web Fonts), size 24
+	// Power of 2, white with black stroke, thickness 2
+	existingImageFile, err := os.Open("font.png")
+	if err != nil {
+		panic(err)
+	}
+	defer existingImageFile.Close()
+	img, err := png.Decode(existingImageFile)
+	if err != nil {
+		panic(err)
+	}
+	rgba := image.NewRGBA(img.Bounds())
+	draw.Draw(rgba, rgba.Bounds(), img, image.Pt(0, 0), draw.Src)
+
+	gl.ActiveTexture(gl.TEXTURE0)
+	gl.GenTextures(1, &textTextureValue)
+	gl.BindTexture(gl.TEXTURE_2D, textTextureValue)
+
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+
+	gl.TexImage2D(
+		gl.TEXTURE_2D,
+		0,
+		gl.SRGB_ALPHA,
+		int32(rgba.Rect.Size().X),
+		int32(rgba.Rect.Size().Y),
+		0,
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		gl.Ptr(rgba.Pix),
+	)
+
+	gl.GenerateMipmap(gl.TEXTURE_2D)
+}
+
+func drawText() {
+	gl.BindVertexArray(textDrawable)
+	gl.DrawArrays(gl.TRIANGLES, 0, 6)
 }
