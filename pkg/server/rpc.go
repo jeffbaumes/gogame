@@ -1,6 +1,10 @@
 package server
 
-import "github.com/jeffbaumes/gogame/pkg/geom"
+import (
+	"log"
+
+	"github.com/jeffbaumes/gogame/pkg/geom"
+)
 
 // Server is the RPC tag for server calls
 type Server int
@@ -14,14 +18,15 @@ func (t *Server) GetChunk(args *geom.ChunkIndex, chunk *geom.Chunk) error {
 	return nil
 }
 
-// SetCellMaterialArgs contains the arguments for the SetCellMaterial RPC call
-type SetCellMaterialArgs struct {
-	ind      geom.CellIndex
-	material int
-}
-
 // SetCellMaterial sets the material for a particular cell
-func (t *Server) SetCellMaterial(args *SetCellMaterialArgs, ret *bool) error {
-	*ret = p.SetCellMaterial(args.ind, args.material)
+func (t *Server) SetCellMaterial(args *geom.RPCSetCellMaterialArgs, ret *bool) error {
+	*ret = p.SetCellMaterial(args.Index, args.Material)
+	for _, c := range clients {
+		var ret bool
+		e := c.Call("Client.SetCellMaterial", args, &ret)
+		if e != nil {
+			log.Println("SetCellMaterial error:", e)
+		}
+	}
 	return nil
 }

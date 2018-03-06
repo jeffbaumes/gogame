@@ -90,13 +90,37 @@ func (p *Planet) GetChunk(ind ChunkIndex) *Chunk {
 	return chunk
 }
 
+// RPCSetCellMaterialArgs contains the arguments for the SetCellMaterial RPC call
+type RPCSetCellMaterialArgs struct {
+	Index    CellIndex
+	Material int
+}
+
 // SetCellMaterial sets the material for a cell
 func (p *Planet) SetCellMaterial(ind CellIndex, material int) bool {
 	cell := p.CellIndexToCell(ind)
 	if cell == nil {
 		return false
 	}
+	if cell.Material == material {
+		return false
+	}
+
 	cell.Material = material
+	chunk := p.CellIndexToChunk(ind)
+	chunk.GraphicsInitialized = false
+
+	if p.rpc != nil {
+		var ret bool
+		e := p.rpc.Call("Server.SetCellMaterial", RPCSetCellMaterialArgs{
+			Index:    ind,
+			Material: material,
+		}, &ret)
+		if e != nil {
+			log.Fatal("SetCellMaterial error:", e)
+		}
+	}
+
 	return true
 }
 

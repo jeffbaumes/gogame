@@ -14,9 +14,9 @@ import (
 )
 
 var (
-	u    *geom.Universe
-	p    *geom.Planet
-	cRPC *rpc.Client
+	u       *geom.Universe
+	p       *geom.Planet
+	clients []*rpc.Client
 )
 
 // Start takes a name, seed, and port and starts the universe server
@@ -131,7 +131,7 @@ func Start(name string, seed, port int) {
 		if e != nil {
 			panic(e)
 		}
-		cRPC = rpc.NewClient(stream)
+		clients = append(clients, rpc.NewClient(stream))
 	}
 }
 

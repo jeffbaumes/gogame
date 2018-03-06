@@ -63,6 +63,8 @@ func Start(username, host string, port int) {
 		panic(e)
 	}
 	s := rpc.NewServer()
+	clientAPI := new(Client)
+	s.Register(clientAPI)
 	go s.ServeConn(smuxConn)
 
 	window := initGlfw()
@@ -183,8 +185,6 @@ func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Ac
 				if cell != nil && cell.Material != geom.Air {
 					cellIndex := p.CartesianToCellIndex(pos)
 					p.SetCellMaterial(cellIndex, geom.Air)
-					chunk := p.CartesianToChunk(pos)
-					chunk.GraphicsInitialized = false
 					break
 				}
 			}
@@ -203,10 +203,6 @@ func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Ac
 					if cell != nil && cell.Material != geom.Air {
 						if prevCellIndex.Lon != -1 {
 							p.SetCellMaterial(prevCellIndex, geom.Rock)
-							chunk := p.CellIndexToChunk(prevCellIndex)
-							if chunk != nil {
-								chunk.GraphicsInitialized = false
-							}
 						}
 						break
 					}

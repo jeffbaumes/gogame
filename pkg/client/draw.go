@@ -221,7 +221,6 @@ func initText() {
 }
 
 func initTextGeom() {
-	// Try to draw a string
 	sx := 2.0 / float32(width) * 12
 	sy := 2.0 / float32(height) * 12
 	points := []float32{}
