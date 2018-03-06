@@ -6,9 +6,11 @@ import (
 	"image/draw"
 	"image/png"
 	"io/ioutil"
+	"log"
 	"os"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
+	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/jeffbaumes/gogame/pkg/geom"
 )
@@ -68,6 +70,8 @@ var (
 	textTextureValue uint32
 	textureCharInfo  = make(map[string]charInfo)
 	text             screenText
+	width            = 500
+	height           = 500
 )
 
 type screenText struct {
@@ -82,6 +86,130 @@ type textLine struct {
 
 type charInfo struct {
 	x, y, width, height, originX, originY, advance int
+}
+
+const (
+	vertexShaderSource = `
+		#version 410
+		in vec3 vp;
+		in vec3 n;
+		uniform mat4 proj;
+		out vec3 color;
+		out vec3 light;
+		void main() {
+			color = n;
+			gl_Position = proj * vec4(vp, 1.0);
+
+			// Apply lighting effect
+			highp vec3 ambientLight = vec3(0.1, 0.2, 0.1);
+			highp vec3 light1Color = vec3(0.5, 0.5, 0.4);
+			highp vec3 light1Dir = normalize(vec3(0.85, 0.8, 0.75));
+			highp float light1 = max(dot(n, light1Dir), 0.0);
+			highp vec3 light2Color = vec3(0.1, 0.1, 0.2);
+			highp vec3 light2Dir = normalize(vec3(-0.85, -0.8, -0.75));
+			highp float light2 = max(dot(n, light2Dir), 0.0);
+			light = ambientLight + (light1Color * light1) + (light2Color * light2);
+		}
+	`
+
+	fragmentShaderSource = `
+		#version 410
+		in vec3 color;
+		in vec3 light;
+		out vec4 frag_color;
+		void main() {
+			frag_color = vec4(light, 1.0);
+		}
+	`
+
+	vertexShaderSourceHUD = `
+		#version 410
+		in vec3 vp;
+		uniform mat4 proj;
+		void main() {
+			gl_Position = proj * vec4(vp, 1.0);
+		}
+	`
+
+	fragmentShaderSourceHUD = `
+		#version 410
+		out vec4 frag_color;
+		void main() {
+			frag_color = vec4(1.0, 1.0, 1.0, 1.0);
+		}
+	`
+
+	vertexShaderSourceText = `
+		#version 410
+
+		in vec4 coord;
+		out vec2 texcoord;
+
+		void main(void) {
+			gl_Position = vec4(coord.xy, 0, 1);
+			texcoord = coord.zw;
+		}
+	`
+
+	fragmentShaderSourceText = `
+		#version 410
+
+		in vec2 texcoord;
+		uniform sampler2D tex;
+		out vec4 frag_color;
+
+		void main(void) {
+			vec4 texel = texture(tex, texcoord);
+			if (texel.a < 0.5) {
+				discard;
+		  }
+			frag_color = texel;
+		}
+	`
+)
+
+func initGlfw() *glfw.Window {
+	if err := glfw.Init(); err != nil {
+		panic(err)
+	}
+	glfw.WindowHint(glfw.ContextVersionMajor, 4)
+	glfw.WindowHint(glfw.ContextVersionMinor, 1)
+	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
+	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
+
+	window, err := glfw.CreateWindow(width, height, "World Blocks", nil, nil)
+	if err != nil {
+		panic(err)
+	}
+	window.MakeContextCurrent()
+
+	return window
+}
+
+func initOpenGL() (program, hudProgram, textProgram uint32) {
+	if err := gl.Init(); err != nil {
+		panic(err)
+	}
+	version := gl.GoStr(gl.GetString(gl.VERSION))
+	log.Println("OpenGL version", version)
+
+	gl.Enable(gl.DEPTH_TEST)
+	// gl.Enable(gl.POLYGON_OFFSET_FILL)
+	// gl.PolygonOffset(2, 0)
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
+	program = createProgram(vertexShaderSource, fragmentShaderSource)
+	bindAttribute(program, 0, "vp")
+	bindAttribute(program, 1, "n")
+
+	hudProgram = createProgram(vertexShaderSourceHUD, fragmentShaderSourceHUD)
+	bindAttribute(hudProgram, 0, "vp")
+
+	textProgram = createProgram(vertexShaderSourceText, fragmentShaderSourceText)
+	bindAttribute(textProgram, 0, "coord")
+
+	return
 }
 
 func drawPlanet(p *geom.Planet) {
