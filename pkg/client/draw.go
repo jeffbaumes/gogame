@@ -1,9 +1,11 @@
 package client
 
 import (
+	"encoding/json"
 	"image"
 	"image/draw"
 	"image/png"
+	"io/ioutil"
 	"os"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
@@ -64,7 +66,13 @@ var (
 	hudDrawable      uint32
 	textDrawable     uint32
 	textTextureValue uint32
+	textureCharInfo  = make(map[string]charInfo)
+	text             string
 )
+
+type charInfo struct {
+	x, y, width, height, originX, originY, advance int
+}
 
 func drawPlanet(p *geom.Planet) {
 	for key, chunk := range p.Chunks {
@@ -145,16 +153,23 @@ func drawHUD() {
 }
 
 func initText() {
-	points := []float32{
-		0.0, 0.0, 0.0, 0.0,
-		0.0, 0.5, 0.0, 1.0,
-		0.5, 0.5, 1.0, 1.0,
-
-		0.5, 0.5, 1.0, 1.0,
-		0.5, 0.0, 1.0, 0.0,
-		0.0, 0.0, 0.0, 0.0,
+	// Load up texture info
+	var textMeta map[string]interface{}
+	textMetaBytes, err := ioutil.ReadFile("font.json")
+	json.Unmarshal(textMetaBytes, &textMeta)
+	characters := textMeta["characters"].(map[string]interface{})
+	for ch, props := range characters {
+		propMap := props.(map[string]interface{})
+		textureCharInfo[ch] = charInfo{
+			x:       int(propMap["x"].(float64)),
+			y:       int(propMap["y"].(float64)),
+			width:   int(propMap["width"].(float64)),
+			height:  int(propMap["height"].(float64)),
+			originX: int(propMap["originX"].(float64)),
+			originY: int(propMap["originY"].(float64)),
+			advance: int(propMap["advance"].(float64)),
+		}
 	}
-	textDrawable = makePointsVao(points, 4)
 
 	// Generated from https://evanw.github.io/font-texture-generator/
 	// Inconsolata font (installed on system with Google Web Fonts), size 24
@@ -178,7 +193,7 @@ func initText() {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 
 	gl.TexImage2D(
 		gl.TEXTURE_2D,
@@ -195,7 +210,34 @@ func initText() {
 	gl.GenerateMipmap(gl.TEXTURE_2D)
 }
 
+func initTextGeom() {
+	// Try to draw a string
+	size := float32(0.03)
+	points := []float32{}
+	for i, ch := range text + " " {
+		aInfo := textureCharInfo[string(ch)]
+		ax1 := 1.0 / 512.0 * float32(aInfo.x-1)
+		ax2 := 1.0 / 512.0 * float32(aInfo.x-1+aInfo.width)
+		ay1 := 1.0 / 128.0 * float32(aInfo.y)
+		ay2 := 1.0 / 128.0 * float32(aInfo.y+aInfo.height)
+		x1 := float32(i)*size - size*float32(aInfo.originX)/12
+		x2 := float32(i)*size + size*float32(aInfo.width)/12 - size*float32(aInfo.originX)/12
+		y1 := -size * float32(aInfo.originY) / 12
+		y2 := size*float32(aInfo.height)/12 - size*float32(aInfo.originY)/12
+		points = append(points, []float32{
+			x1, -y1, ax1, ay1,
+			x1, -y2, ax1, ay2,
+			x2, -y2, ax2, ay2,
+
+			x2, -y2, ax2, ay2,
+			x2, -y1, ax2, ay1,
+			x1, -y1, ax1, ay1,
+		}...)
+	}
+	textDrawable = makePointsVao(points, 4)
+}
+
 func drawText() {
 	gl.BindVertexArray(textDrawable)
-	gl.DrawArrays(gl.TRIANGLES, 0, 6)
+	gl.DrawArrays(gl.TRIANGLES, 0, 6*int32(len(text)))
 }

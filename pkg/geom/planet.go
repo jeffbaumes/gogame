@@ -119,13 +119,13 @@ func (p *Planet) CellLocToChunk(l CellLoc) *Chunk {
 // CellIndexToChunk converts a cell index to its containing chunk
 func (p *Planet) CellIndexToChunk(cellIndex CellIndex) *Chunk {
 	ind := p.CellIndexToChunkIndex(cellIndex)
-	if ind.Lon < 0 || ind.Lon > p.LonCells/ChunkSize {
+	if ind.Lon < 0 || ind.Lon >= p.LonCells/ChunkSize {
 		return nil
 	}
-	if ind.Lat < 0 || ind.Lat > p.LatCells/ChunkSize {
+	if ind.Lat < 0 || ind.Lat >= p.LatCells/ChunkSize {
 		return nil
 	}
-	if ind.Alt < 0 || ind.Alt > p.AltCells/ChunkSize {
+	if ind.Alt < 0 || ind.Alt >= p.AltCells/ChunkSize {
 		return nil
 	}
 	return p.GetChunk(ind)
@@ -139,10 +139,11 @@ func (p *Planet) CellLocToChunkIndex(l CellLoc) ChunkIndex {
 
 // CellIndexToChunkIndex converts a cell index to its containing chunk index
 func (p *Planet) CellIndexToChunkIndex(cellInd CellIndex) ChunkIndex {
+	cs := float64(ChunkSize)
 	return ChunkIndex{
-		Lon: cellInd.Lon / ChunkSize,
-		Lat: cellInd.Lat / ChunkSize,
-		Alt: cellInd.Alt / ChunkSize,
+		Lon: int(math.Floor(float64(cellInd.Lon) / cs)),
+		Lat: int(math.Floor(float64(cellInd.Lat) / cs)),
+		Alt: int(math.Floor(float64(cellInd.Alt) / cs)),
 	}
 }
 

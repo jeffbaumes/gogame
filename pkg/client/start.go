@@ -264,6 +264,10 @@ func drawFrame(h float32, window *glfw.Window, program, hudProgram, textProgram 
 	gl.UniformMatrix4fv(hudProjection, 1, false, &projHUD[0])
 	drawHUD()
 
+	r, theta, phi := mgl32.CartesianToSpherical(player.loc)
+	text = fmt.Sprintf("LAT %v, LON %v, ALT %v", int(theta/math.Pi*180-90+0.5), int(phi/math.Pi*180+0.5), int(r+0.5))
+	initTextGeom()
+
 	gl.UseProgram(textProgram)
 	gl.Uniform1i(textTexture, int32(textTextureValue))
 	drawText()
@@ -279,8 +283,6 @@ func drawFrame(h float32, window *glfw.Window, program, hudProgram, textProgram 
 	right := player.lookHeading.Cross(up)
 	if player.gameMode == normal {
 		feet := player.loc.Sub(up.Mul(float32(player.height)))
-		// r, theta, phi := mgl32.CartesianToSpherical(feet)
-		// log.Println(r, theta/math.Pi*180, phi/math.Pi*180)
 		feetCell := p.CartesianToCell(feet)
 
 		ind := p.CartesianToChunkIndex(feet)
