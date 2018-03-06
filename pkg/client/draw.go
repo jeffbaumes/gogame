@@ -67,8 +67,18 @@ var (
 	textDrawable     uint32
 	textTextureValue uint32
 	textureCharInfo  = make(map[string]charInfo)
-	text             string
+	text             screenText
 )
+
+type screenText struct {
+	statusLine textLine
+	charCount  int
+}
+
+type textLine struct {
+	str  string
+	x, y int
+}
 
 type charInfo struct {
 	x, y, width, height, originX, originY, advance int
@@ -212,18 +222,21 @@ func initText() {
 
 func initTextGeom() {
 	// Try to draw a string
-	size := float32(0.03)
+	sx := 2.0 / float32(width) * 12
+	sy := 2.0 / float32(height) * 12
 	points := []float32{}
-	for i, ch := range text + " " {
+	text.charCount = 0
+	line := text.statusLine
+	for i, ch := range line.str + " " {
 		aInfo := textureCharInfo[string(ch)]
 		ax1 := 1.0 / 512.0 * float32(aInfo.x-1)
 		ax2 := 1.0 / 512.0 * float32(aInfo.x-1+aInfo.width)
 		ay1 := 1.0 / 128.0 * float32(aInfo.y)
 		ay2 := 1.0 / 128.0 * float32(aInfo.y+aInfo.height)
-		x1 := float32(i)*size - size*float32(aInfo.originX)/12
-		x2 := float32(i)*size + size*float32(aInfo.width)/12 - size*float32(aInfo.originX)/12
-		y1 := -size * float32(aInfo.originY) / 12
-		y2 := size*float32(aInfo.height)/12 - size*float32(aInfo.originY)/12
+		x1 := -1 + sx*float32(line.x) + float32(i)*sx - sx*float32(aInfo.originX)/12
+		x2 := -1 + sx*float32(line.x) + float32(i)*sx + sx*float32(aInfo.width)/12 - sx*float32(aInfo.originX)/12
+		y1 := 1 - sy*float32(line.y) + -sy*float32(aInfo.originY)/12
+		y2 := 1 - sy*float32(line.y) + sy*float32(aInfo.height)/12 - sy*float32(aInfo.originY)/12
 		points = append(points, []float32{
 			x1, -y1, ax1, ay1,
 			x1, -y2, ax1, ay2,
@@ -233,11 +246,12 @@ func initTextGeom() {
 			x2, -y1, ax2, ay1,
 			x1, -y1, ax1, ay1,
 		}...)
+		text.charCount++
 	}
 	textDrawable = makePointsVao(points, 4)
 }
 
 func drawText() {
 	gl.BindVertexArray(textDrawable)
-	gl.DrawArrays(gl.TRIANGLES, 0, 6*int32(len(text)))
+	gl.DrawArrays(gl.TRIANGLES, 0, 6*int32(text.charCount))
 }

@@ -265,7 +265,9 @@ func drawFrame(h float32, window *glfw.Window, program, hudProgram, textProgram 
 	drawHUD()
 
 	r, theta, phi := mgl32.CartesianToSpherical(player.loc)
-	text = fmt.Sprintf("LAT %v, LON %v, ALT %v", int(theta/math.Pi*180-90+0.5), int(phi/math.Pi*180+0.5), int(r+0.5))
+	text.statusLine.x = 1
+	text.statusLine.y = 1
+	text.statusLine.str = fmt.Sprintf("LAT %v, LON %v, ALT %v", int(theta/math.Pi*180-90+0.5), int(phi/math.Pi*180+0.5), int(r+0.5))
 	initTextGeom()
 
 	gl.UseProgram(textProgram)
