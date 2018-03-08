@@ -2,14 +2,13 @@ package server
 
 import (
 	"log"
-	"net/rpc"
 
 	"github.com/jeffbaumes/gogame/pkg/geom"
 )
 
 // API is the RPC tag for server calls
 type API struct {
-	clients []*rpc.Client
+	connectedPeople []*connectedPerson
 }
 
 // GetChunk returns the planet chunk for the given chunk coordinates
@@ -24,10 +23,10 @@ func (api *API) GetChunk(args *geom.ChunkIndex, chunk *geom.Chunk) error {
 // SetCellMaterial sets the material for a particular cell
 func (api *API) SetCellMaterial(args *geom.RPCSetCellMaterialArgs, ret *bool) error {
 	*ret = p.SetCellMaterial(args.Index, args.Material)
-	var validClients []*rpc.Client
-	for _, c := range api.clients {
+	var validPeople []*connectedPerson
+	for _, c := range api.connectedPeople {
 		var ret bool
-		e := c.Call("API.SetCellMaterial", args, &ret)
+		e := c.rpc.Call("API.SetCellMaterial", args, &ret)
 		if e != nil {
 			if e.Error() == "connection is shut down" {
 				// Drop the client from the list
@@ -36,8 +35,8 @@ func (api *API) SetCellMaterial(args *geom.RPCSetCellMaterialArgs, ret *bool) er
 			}
 			log.Println("SetCellMaterial error:", e)
 		}
-		validClients = append(validClients, c)
+		validPeople = append(validPeople, c)
 	}
-	api.clients = validClients
+	api.connectedPeople = validPeople
 	return nil
 }

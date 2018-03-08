@@ -22,7 +22,7 @@ const (
 func Start(username, host string, port int) {
 	runtime.LockOSThread()
 
-	player := newPerson()
+	player := newPerson("mainnose")
 
 	conn, err := net.Dial("tcp", fmt.Sprintf("%v:%v", host, port))
 	if err != nil {
@@ -49,7 +49,7 @@ func Start(username, host string, port int) {
 		panic(e)
 	}
 	s := rpc.NewServer()
-	clientAPI := newAPI(planet)
+	clientAPI := newAPI(planet, player)
 	s.Register(clientAPI)
 	go s.ServeConn(smuxConn)
 

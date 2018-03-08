@@ -30,9 +30,10 @@ type person struct {
 	gameMode     int
 	holdingJump  bool
 	inJump       bool
+	name         string
 }
 
-func newPerson() *person {
+func newPerson(name string) *person {
 	p := person{}
 	p.walkVel = 5.0
 	p.loc = mgl32.Vec3{55, 0, 0}
@@ -40,6 +41,7 @@ func newPerson() *person {
 	p.height = 2
 	p.radius = 0.25
 	p.gameMode = normal
+	p.name = name
 	return &p
 }
 

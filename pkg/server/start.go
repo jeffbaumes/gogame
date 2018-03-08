@@ -130,8 +130,23 @@ func Start(name string, seed, port int) {
 		if e != nil {
 			panic(e)
 		}
-		api.clients = append(api.clients, rpc.NewClient(stream))
+		crpc := rpc.NewClient(stream)
+
+		// Ask client for player name
+		var state geom.PersonState
+		e = crpc.Call("API.GetPersonState", 0, &state)
+		if e != nil {
+			log.Fatal("GetPersonState error:", e)
+		}
+		p := connectedPerson{state: state, rpc: crpc}
+		log.Println(p.state.Name)
+		api.connectedPeople = append(api.connectedPeople, &p)
 	}
+}
+
+type connectedPerson struct {
+	rpc   *rpc.Client
+	state geom.PersonState
 }
 
 func checkErr(err error) {
