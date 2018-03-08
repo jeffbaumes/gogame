@@ -2,11 +2,17 @@ package client
 
 import "github.com/jeffbaumes/gogame/pkg/geom"
 
-// Client is the RPC tag for client calls
-type Client int
+// API is the RPC tag for client calls
+type API struct {
+	planet *geom.Planet
+}
+
+func newAPI(planet *geom.Planet) *API {
+	return &API{planet}
+}
 
 // SetCellMaterial sets the material for a particular cell
-func (t *Client) SetCellMaterial(args *geom.RPCSetCellMaterialArgs, ret *bool) error {
-	*ret = p.SetCellMaterial(args.Index, args.Material)
+func (api *API) SetCellMaterial(args *geom.RPCSetCellMaterialArgs, ret *bool) error {
+	*ret = api.planet.SetCellMaterial(args.Index, args.Material)
 	return nil
 }

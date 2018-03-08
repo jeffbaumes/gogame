@@ -2,11 +2,13 @@ package client
 
 import (
 	"encoding/json"
+	"fmt"
 	"image"
 	"image/draw"
 	"image/png"
 	"io/ioutil"
 	"log"
+	"math"
 	"os"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
@@ -65,28 +67,7 @@ var (
 		-0.5, -0.5, 0.5,
 		0.5, -0.5, 0.5,
 	}
-	hudDrawable      uint32
-	textDrawable     uint32
-	textTextureValue uint32
-	textureCharInfo  = make(map[string]charInfo)
-	text             screenText
-	width            = 500
-	height           = 500
 )
-
-type screenText struct {
-	statusLine textLine
-	charCount  int
-}
-
-type textLine struct {
-	str  string
-	x, y int
-}
-
-type charInfo struct {
-	x, y, width, height, originX, originY, advance int
-}
 
 const (
 	vertexShaderSource = `
@@ -177,7 +158,7 @@ func initGlfw() *glfw.Window {
 	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
 	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
 
-	window, err := glfw.CreateWindow(width, height, "World Blocks", nil, nil)
+	window, err := glfw.CreateWindow(500, 500, "World Blocks", nil, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -186,7 +167,7 @@ func initGlfw() *glfw.Window {
 	return window
 }
 
-func initOpenGL() (program, hudProgram, textProgram uint32) {
+func initOpenGL() {
 	if err := gl.Init(); err != nil {
 		panic(err)
 	}
@@ -198,30 +179,123 @@ func initOpenGL() (program, hudProgram, textProgram uint32) {
 	// gl.PolygonOffset(2, 0)
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-
-	program = createProgram(vertexShaderSource, fragmentShaderSource)
-	bindAttribute(program, 0, "vp")
-	bindAttribute(program, 1, "n")
-
-	hudProgram = createProgram(vertexShaderSourceHUD, fragmentShaderSourceHUD)
-	bindAttribute(hudProgram, 0, "vp")
-
-	textProgram = createProgram(vertexShaderSourceText, fragmentShaderSourceText)
-	bindAttribute(textProgram, 0, "coord")
-
-	return
 }
 
-func drawPlanet(p *geom.Planet) {
-	for key, chunk := range p.Chunks {
+func drawFrame(h float32, player *person, planet *geom.Planet, text *screenText, over *overlay, planetRen *planetRenderer, window *glfw.Window) {
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+	gl.UseProgram(planetRen.program)
+	lookDir := player.lookDir()
+	view := mgl32.LookAtV(player.loc, player.loc.Add(lookDir), player.loc.Normalize())
+	width, height := framebufferSize(window)
+	perspective := mgl32.Perspective(45, float32(width)/float32(height), 0.01, 1000)
+	proj := perspective.Mul4(view)
+	gl.UniformMatrix4fv(planetRen.projectionUniform, 1, false, &proj[0])
+	drawPlanet(planet)
+
+	over.draw(window)
+
+	r, theta, phi := mgl32.CartesianToSpherical(player.loc)
+	text.statusLine.x = 1
+	text.statusLine.y = 1
+	text.statusLine.str = fmt.Sprintf("LAT %v, LON %v, ALT %v", int(theta/math.Pi*180-90+0.5), int(phi/math.Pi*180+0.5), int(r+0.5))
+	text.computeGeometry(framebufferSize(window))
+
+	gl.UseProgram(text.program)
+	gl.Uniform1i(text.textureUniform, int32(text.texture))
+	text.draw()
+
+	if !cursorGrabbed(window) {
+		glfw.PollEvents()
+		window.SwapBuffers()
+		return
+	}
+
+	// Update position
+	up := player.loc.Normalize()
+	right := player.lookHeading.Cross(up)
+	if player.gameMode == normal {
+		feet := player.loc.Sub(up.Mul(float32(player.height)))
+		feetCell := planet.CartesianToCell(feet)
+
+		ind := planet.CartesianToChunkIndex(feet)
+
+		for lon := ind.Lon - renderDistance; lon <= ind.Lon+renderDistance; lon++ {
+			validLon := lon
+			for validLon < 0 {
+				validLon += planet.LonCells / geom.ChunkSize
+			}
+			for validLon >= planet.LonCells/geom.ChunkSize {
+				validLon -= planet.LonCells / geom.ChunkSize
+			}
+			latMin := geom.Max(ind.Lat-renderDistance, 0)
+			latMax := geom.Min(ind.Lat+renderDistance, planet.LatCells/geom.ChunkSize-1)
+			for lat := latMin; lat <= latMax; lat++ {
+				for alt := 0; alt < planet.AltCells/geom.ChunkSize; alt++ {
+					planet.GetChunk(geom.ChunkIndex{Lon: validLon, Lat: lat, Alt: alt})
+				}
+			}
+		}
+
+		falling := feetCell == nil || feetCell.Material == geom.Air
+		if falling {
+			player.fallVel -= 20 * h
+		} else if player.holdingJump && !player.inJump {
+			player.fallVel = 7
+			player.inJump = true
+		} else {
+			player.fallVel = 0
+			player.inJump = false
+		}
+
+		playerVel := mgl32.Vec3{}
+		playerVel = playerVel.Add(up.Mul(player.fallVel))
+		playerVel = playerVel.Add(player.lookHeading.Mul((player.forwardVel - player.backVel)))
+		playerVel = playerVel.Add(right.Mul((player.rightVel - player.leftVel)))
+
+		player.loc = player.loc.Add(playerVel.Mul(h))
+		for height := planet.AltDelta / 2; height < player.height; height += planet.AltDelta {
+			player.collide(planet, float32(height), geom.CellLoc{Lon: 0, Lat: 0, Alt: -1})
+			player.collide(planet, float32(height), geom.CellLoc{Lon: 1, Lat: 0, Alt: 0})
+			player.collide(planet, float32(height), geom.CellLoc{Lon: -1, Lat: 0, Alt: 0})
+			player.collide(planet, float32(height), geom.CellLoc{Lon: 0, Lat: 1, Alt: 0})
+			player.collide(planet, float32(height), geom.CellLoc{Lon: 0, Lat: -1, Alt: 0})
+		}
+	} else if player.gameMode == flying {
+		player.loc = player.loc.Add(up.Mul((player.upVel - player.downVel) * h))
+		player.loc = player.loc.Add(lookDir.Mul((player.forwardVel - player.backVel) * h))
+		player.loc = player.loc.Add(right.Mul((player.rightVel - player.leftVel) * h))
+	}
+
+	glfw.PollEvents()
+	window.SwapBuffers()
+}
+
+type planetRenderer struct {
+	planet            *geom.Planet
+	program           uint32
+	projectionUniform int32
+}
+
+func newPlanetRenderer(planet *geom.Planet) *planetRenderer {
+	pr := planetRenderer{}
+	pr.program = createProgram(vertexShaderSource, fragmentShaderSource)
+	bindAttribute(pr.program, 0, "vp")
+	bindAttribute(pr.program, 1, "n")
+	pr.projectionUniform = uniformLocation(pr.program, "proj")
+	return &pr
+}
+
+func drawPlanet(planet *geom.Planet) {
+	for key, chunk := range planet.Chunks {
 		if !chunk.GraphicsInitialized {
-			initChunkGraphics(chunk, p, key.Lon, key.Lat, key.Alt)
+			initChunkGraphics(chunk, planet, key.Lon, key.Lat, key.Alt)
 		}
 		drawChunk(chunk)
 	}
 }
 
-func initChunkGraphics(c *geom.Chunk, p *geom.Planet, lonIndex, latIndex, altIndex int) {
+func initChunkGraphics(c *geom.Chunk, planet *geom.Planet, lonIndex, latIndex, altIndex int) {
 	cs := geom.ChunkSize
 	points := []float32{}
 	normals := []float32{}
@@ -237,7 +311,7 @@ func initChunkGraphics(c *geom.Chunk, p *geom.Planet, lonIndex, latIndex, altInd
 							Lat: float32(cs*latIndex+cLat) + square[i+1],
 							Alt: float32(cs*altIndex+cAlt) + square[i+2],
 						}
-						r, theta, phi := p.CellLocToSpherical(l)
+						r, theta, phi := planet.CellLocToSpherical(l)
 						cart := mgl32.SphericalToCartesian(r, theta, phi)
 						pts[i] = cart[0]
 						pts[i+1] = cart[1]
@@ -274,7 +348,14 @@ func drawChunk(chunk *geom.Chunk) {
 	gl.DrawArrays(gl.TRIANGLES, 0, int32(cs*cs*cs*len(square)/3))
 }
 
-func initHUD() {
+type overlay struct {
+	program           uint32
+	drawable          uint32
+	projectionUniform int32
+}
+
+func newOverlay() *overlay {
+	over := overlay{}
 	points := []float32{
 		-20.0, 0.0, 0.0,
 		19.0, 0.0, 0.0,
@@ -282,15 +363,54 @@ func initHUD() {
 		0.0, -20.0, 0.0,
 		0.0, 19.0, 0.0,
 	}
-	hudDrawable = makePointsVao(points, 3)
+	over.drawable = makePointsVao(points, 3)
+
+	over.program = createProgram(vertexShaderSourceHUD, fragmentShaderSourceHUD)
+	bindAttribute(over.program, 0, "vp")
+
+	over.projectionUniform = uniformLocation(over.program, "proj")
+	return &over
 }
 
-func drawHUD() {
-	gl.BindVertexArray(hudDrawable)
+func (over *overlay) draw(w *glfw.Window) {
+	gl.UseProgram(over.program)
+	width, height := w.GetSize()
+	proj := mgl32.Scale3D(1/float32(width), 1/float32(height), 1.0)
+	gl.UniformMatrix4fv(over.projectionUniform, 1, false, &proj[0])
+
+	gl.BindVertexArray(over.drawable)
 	gl.DrawArrays(gl.LINES, 0, 4)
 }
 
-func initText() {
+type screenText struct {
+	charInfo       map[string]charInfo
+	statusLine     textLine
+	charCount      int
+	textDrawable   uint32
+	program        uint32
+	texture        uint32
+	textureUniform int32
+}
+
+type textLine struct {
+	str  string
+	x, y int
+}
+
+type charInfo struct {
+	x, y, width, height, originX, originY, advance int
+}
+
+func newScreenText() *screenText {
+	text := screenText{}
+
+	text.charInfo = make(map[string]charInfo)
+
+	text.program = createProgram(vertexShaderSourceText, fragmentShaderSourceText)
+	bindAttribute(text.program, 0, "coord")
+
+	text.textureUniform = uniformLocation(text.program, "texture")
+
 	// Load up texture info
 	var textMeta map[string]interface{}
 	textMetaBytes, err := ioutil.ReadFile("font.json")
@@ -298,7 +418,7 @@ func initText() {
 	characters := textMeta["characters"].(map[string]interface{})
 	for ch, props := range characters {
 		propMap := props.(map[string]interface{})
-		textureCharInfo[ch] = charInfo{
+		text.charInfo[ch] = charInfo{
 			x:       int(propMap["x"].(float64)),
 			y:       int(propMap["y"].(float64)),
 			width:   int(propMap["width"].(float64)),
@@ -325,8 +445,8 @@ func initText() {
 	draw.Draw(rgba, rgba.Bounds(), img, image.Pt(0, 0), draw.Src)
 
 	gl.ActiveTexture(gl.TEXTURE0)
-	gl.GenTextures(1, &textTextureValue)
-	gl.BindTexture(gl.TEXTURE_2D, textTextureValue)
+	gl.GenTextures(1, &text.texture)
+	gl.BindTexture(gl.TEXTURE_2D, text.texture)
 
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
@@ -346,16 +466,17 @@ func initText() {
 	)
 
 	gl.GenerateMipmap(gl.TEXTURE_2D)
+	return &text
 }
 
-func initTextGeom() {
+func (text *screenText) computeGeometry(width, height int) {
 	sx := 2.0 / float32(width) * 12
 	sy := 2.0 / float32(height) * 12
 	points := []float32{}
 	text.charCount = 0
 	line := text.statusLine
 	for i, ch := range line.str + " " {
-		aInfo := textureCharInfo[string(ch)]
+		aInfo := text.charInfo[string(ch)]
 		ax1 := 1.0 / 512.0 * float32(aInfo.x-1)
 		ax2 := 1.0 / 512.0 * float32(aInfo.x-1+aInfo.width)
 		ay1 := 1.0 / 128.0 * float32(aInfo.y)
@@ -375,10 +496,10 @@ func initTextGeom() {
 		}...)
 		text.charCount++
 	}
-	textDrawable = makePointsVao(points, 4)
+	text.textDrawable = makePointsVao(points, 4)
 }
 
-func drawText() {
-	gl.BindVertexArray(textDrawable)
+func (text *screenText) draw() {
+	gl.BindVertexArray(text.textDrawable)
 	gl.DrawArrays(gl.TRIANGLES, 0, 6*int32(text.charCount))
 }

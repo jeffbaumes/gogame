@@ -23,7 +23,7 @@ func (t *Server) SetCellMaterial(args *geom.RPCSetCellMaterialArgs, ret *bool) e
 	*ret = p.SetCellMaterial(args.Index, args.Material)
 	for _, c := range clients {
 		var ret bool
-		e := c.Call("Client.SetCellMaterial", args, &ret)
+		e := c.Call("API.SetCellMaterial", args, &ret)
 		if e != nil {
 			log.Println("SetCellMaterial error:", e)
 		}
