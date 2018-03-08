@@ -7,11 +7,13 @@ import (
 	"github.com/jeffbaumes/gogame/pkg/geom"
 )
 
-// Server is the RPC tag for server calls
-type Server int
+// API is the RPC tag for server calls
+type API struct {
+	clients []*rpc.Client
+}
 
 // GetChunk returns the planet chunk for the given chunk coordinates
-func (t *Server) GetChunk(args *geom.ChunkIndex, chunk *geom.Chunk) error {
+func (api *API) GetChunk(args *geom.ChunkIndex, chunk *geom.Chunk) error {
 	c := p.GetChunk(*args)
 	if c != nil {
 		*chunk = *c
@@ -20,10 +22,10 @@ func (t *Server) GetChunk(args *geom.ChunkIndex, chunk *geom.Chunk) error {
 }
 
 // SetCellMaterial sets the material for a particular cell
-func (t *Server) SetCellMaterial(args *geom.RPCSetCellMaterialArgs, ret *bool) error {
+func (api *API) SetCellMaterial(args *geom.RPCSetCellMaterialArgs, ret *bool) error {
 	*ret = p.SetCellMaterial(args.Index, args.Material)
 	var validClients []*rpc.Client
-	for _, c := range clients {
+	for _, c := range api.clients {
 		var ret bool
 		e := c.Call("API.SetCellMaterial", args, &ret)
 		if e != nil {
@@ -36,6 +38,6 @@ func (t *Server) SetCellMaterial(args *geom.RPCSetCellMaterialArgs, ret *bool) e
 		}
 		validClients = append(validClients, c)
 	}
-	clients = validClients
+	api.clients = validClients
 	return nil
 }

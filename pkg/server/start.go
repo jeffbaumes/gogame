@@ -14,9 +14,8 @@ import (
 )
 
 var (
-	u       *geom.Universe
-	p       *geom.Planet
-	clients []*rpc.Client
+	u *geom.Universe
+	p *geom.Planet
 )
 
 // Start takes a name, seed, and port and starts the universe server
@@ -101,7 +100,7 @@ func Start(name string, seed, port int) {
 
 	p = geom.NewPlanet(50.0, 16, 0, nil)
 
-	serverAPI := new(Server)
+	api := new(API)
 	listener, e := net.Listen("tcp", fmt.Sprintf(":%v", port))
 	if e != nil {
 		log.Fatal("listen error:", e)
@@ -123,7 +122,7 @@ func Start(name string, seed, port int) {
 			panic(e)
 		}
 		srpc := rpc.NewServer()
-		srpc.Register(serverAPI)
+		srpc.Register(api)
 		go srpc.ServeConn(muxConn)
 
 		// Set up stream back to client
@@ -131,7 +130,7 @@ func Start(name string, seed, port int) {
 		if e != nil {
 			panic(e)
 		}
-		clients = append(clients, rpc.NewClient(stream))
+		api.clients = append(api.clients, rpc.NewClient(stream))
 	}
 }
 

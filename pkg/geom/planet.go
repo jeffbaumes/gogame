@@ -80,7 +80,7 @@ func (p *Planet) GetChunk(ind ChunkIndex) *Chunk {
 			p.Chunks[ind] = chunk
 		} else {
 			rchunk := Chunk{}
-			e := p.rpc.Call("Server.GetChunk", ind, &rchunk)
+			e := p.rpc.Call("API.GetChunk", ind, &rchunk)
 			if e != nil {
 				log.Fatal("GetChunk error:", e)
 			}
@@ -112,7 +112,7 @@ func (p *Planet) SetCellMaterial(ind CellIndex, material int) bool {
 
 	if p.rpc != nil {
 		var ret bool
-		e := p.rpc.Call("Server.SetCellMaterial", RPCSetCellMaterialArgs{
+		e := p.rpc.Call("API.SetCellMaterial", RPCSetCellMaterialArgs{
 			Index:    ind,
 			Material: material,
 		}, &ret)
