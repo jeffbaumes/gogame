@@ -70,7 +70,11 @@ func Start(username, host string, port int) {
 		h := float32(time.Since(t)) / float32(time.Second)
 		t = time.Now()
 
-		drawFrame(h, player, planet, text, over, planetRen, window)
+		drawFrame(h, player, text, over, planetRen, window)
+
+		if cursorGrabbed(window) {
+			player.updatePosition(h, planet)
+		}
 
 		time.Sleep(time.Second/time.Duration(targetFPS) - time.Since(t))
 	}

@@ -2,6 +2,7 @@ package server
 
 import (
 	"log"
+	"net/rpc"
 
 	"github.com/jeffbaumes/gogame/pkg/geom"
 )
@@ -21,12 +22,20 @@ func (t *Server) GetChunk(args *geom.ChunkIndex, chunk *geom.Chunk) error {
 // SetCellMaterial sets the material for a particular cell
 func (t *Server) SetCellMaterial(args *geom.RPCSetCellMaterialArgs, ret *bool) error {
 	*ret = p.SetCellMaterial(args.Index, args.Material)
+	var validClients []*rpc.Client
 	for _, c := range clients {
 		var ret bool
 		e := c.Call("API.SetCellMaterial", args, &ret)
 		if e != nil {
+			if e.Error() == "connection is shut down" {
+				// Drop the client from the list
+				// TODO: Should let the other clients know that this player is gone
+				continue
+			}
 			log.Println("SetCellMaterial error:", e)
 		}
+		validClients = append(validClients, c)
 	}
+	clients = validClients
 	return nil
 }

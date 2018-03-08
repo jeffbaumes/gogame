@@ -181,91 +181,12 @@ func initOpenGL() {
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 }
 
-func drawFrame(h float32, player *person, planet *geom.Planet, text *screenText, over *overlay, planetRen *planetRenderer, window *glfw.Window) {
+func drawFrame(h float32, player *person, text *screenText, over *overlay, planetRen *planetRenderer, window *glfw.Window) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-	gl.UseProgram(planetRen.program)
-	lookDir := player.lookDir()
-	view := mgl32.LookAtV(player.loc, player.loc.Add(lookDir), player.loc.Normalize())
-	width, height := framebufferSize(window)
-	perspective := mgl32.Perspective(45, float32(width)/float32(height), 0.01, 1000)
-	proj := perspective.Mul4(view)
-	gl.UniformMatrix4fv(planetRen.projectionUniform, 1, false, &proj[0])
-	drawPlanet(planet)
-
+	planetRen.draw(player, window)
 	over.draw(window)
-
-	r, theta, phi := mgl32.CartesianToSpherical(player.loc)
-	text.statusLine.x = 1
-	text.statusLine.y = 1
-	text.statusLine.str = fmt.Sprintf("LAT %v, LON %v, ALT %v", int(theta/math.Pi*180-90+0.5), int(phi/math.Pi*180+0.5), int(r+0.5))
-	text.computeGeometry(framebufferSize(window))
-
-	gl.UseProgram(text.program)
-	gl.Uniform1i(text.textureUniform, int32(text.texture))
-	text.draw()
-
-	if !cursorGrabbed(window) {
-		glfw.PollEvents()
-		window.SwapBuffers()
-		return
-	}
-
-	// Update position
-	up := player.loc.Normalize()
-	right := player.lookHeading.Cross(up)
-	if player.gameMode == normal {
-		feet := player.loc.Sub(up.Mul(float32(player.height)))
-		feetCell := planet.CartesianToCell(feet)
-
-		ind := planet.CartesianToChunkIndex(feet)
-
-		for lon := ind.Lon - renderDistance; lon <= ind.Lon+renderDistance; lon++ {
-			validLon := lon
-			for validLon < 0 {
-				validLon += planet.LonCells / geom.ChunkSize
-			}
-			for validLon >= planet.LonCells/geom.ChunkSize {
-				validLon -= planet.LonCells / geom.ChunkSize
-			}
-			latMin := geom.Max(ind.Lat-renderDistance, 0)
-			latMax := geom.Min(ind.Lat+renderDistance, planet.LatCells/geom.ChunkSize-1)
-			for lat := latMin; lat <= latMax; lat++ {
-				for alt := 0; alt < planet.AltCells/geom.ChunkSize; alt++ {
-					planet.GetChunk(geom.ChunkIndex{Lon: validLon, Lat: lat, Alt: alt})
-				}
-			}
-		}
-
-		falling := feetCell == nil || feetCell.Material == geom.Air
-		if falling {
-			player.fallVel -= 20 * h
-		} else if player.holdingJump && !player.inJump {
-			player.fallVel = 7
-			player.inJump = true
-		} else {
-			player.fallVel = 0
-			player.inJump = false
-		}
-
-		playerVel := mgl32.Vec3{}
-		playerVel = playerVel.Add(up.Mul(player.fallVel))
-		playerVel = playerVel.Add(player.lookHeading.Mul((player.forwardVel - player.backVel)))
-		playerVel = playerVel.Add(right.Mul((player.rightVel - player.leftVel)))
-
-		player.loc = player.loc.Add(playerVel.Mul(h))
-		for height := planet.AltDelta / 2; height < player.height; height += planet.AltDelta {
-			player.collide(planet, float32(height), geom.CellLoc{Lon: 0, Lat: 0, Alt: -1})
-			player.collide(planet, float32(height), geom.CellLoc{Lon: 1, Lat: 0, Alt: 0})
-			player.collide(planet, float32(height), geom.CellLoc{Lon: -1, Lat: 0, Alt: 0})
-			player.collide(planet, float32(height), geom.CellLoc{Lon: 0, Lat: 1, Alt: 0})
-			player.collide(planet, float32(height), geom.CellLoc{Lon: 0, Lat: -1, Alt: 0})
-		}
-	} else if player.gameMode == flying {
-		player.loc = player.loc.Add(up.Mul((player.upVel - player.downVel) * h))
-		player.loc = player.loc.Add(lookDir.Mul((player.forwardVel - player.backVel) * h))
-		player.loc = player.loc.Add(right.Mul((player.rightVel - player.leftVel) * h))
-	}
+	text.draw(player, window)
 
 	glfw.PollEvents()
 	window.SwapBuffers()
@@ -279,6 +200,7 @@ type planetRenderer struct {
 
 func newPlanetRenderer(planet *geom.Planet) *planetRenderer {
 	pr := planetRenderer{}
+	pr.planet = planet
 	pr.program = createProgram(vertexShaderSource, fragmentShaderSource)
 	bindAttribute(pr.program, 0, "vp")
 	bindAttribute(pr.program, 1, "n")
@@ -286,10 +208,18 @@ func newPlanetRenderer(planet *geom.Planet) *planetRenderer {
 	return &pr
 }
 
-func drawPlanet(planet *geom.Planet) {
-	for key, chunk := range planet.Chunks {
+func (planetRen *planetRenderer) draw(player *person, w *glfw.Window) {
+	gl.UseProgram(planetRen.program)
+	lookDir := player.lookDir()
+	view := mgl32.LookAtV(player.loc, player.loc.Add(lookDir), player.loc.Normalize())
+	width, height := framebufferSize(w)
+	perspective := mgl32.Perspective(45, float32(width)/float32(height), 0.01, 1000)
+	proj := perspective.Mul4(view)
+	gl.UniformMatrix4fv(planetRen.projectionUniform, 1, false, &proj[0])
+
+	for key, chunk := range planetRen.planet.Chunks {
 		if !chunk.GraphicsInitialized {
-			initChunkGraphics(chunk, planet, key.Lon, key.Lat, key.Alt)
+			initChunkGraphics(chunk, planetRen.planet, key.Lon, key.Lat, key.Alt)
 		}
 		drawChunk(chunk)
 	}
@@ -405,6 +335,8 @@ func newScreenText() *screenText {
 	text := screenText{}
 
 	text.charInfo = make(map[string]charInfo)
+	text.statusLine.x = 1
+	text.statusLine.y = 1
 
 	text.program = createProgram(vertexShaderSourceText, fragmentShaderSourceText)
 	bindAttribute(text.program, 0, "coord")
@@ -499,7 +431,13 @@ func (text *screenText) computeGeometry(width, height int) {
 	text.textDrawable = makePointsVao(points, 4)
 }
 
-func (text *screenText) draw() {
+func (text *screenText) draw(player *person, w *glfw.Window) {
+	r, theta, phi := mgl32.CartesianToSpherical(player.loc)
+	text.statusLine.str = fmt.Sprintf("LAT %v, LON %v, ALT %v", int(theta/math.Pi*180-90+0.5), int(phi/math.Pi*180+0.5), int(r+0.5))
+	text.computeGeometry(framebufferSize(w))
+
+	gl.UseProgram(text.program)
+	gl.Uniform1i(text.textureUniform, int32(text.texture))
 	gl.BindVertexArray(text.textDrawable)
 	gl.DrawArrays(gl.TRIANGLES, 0, 6*int32(text.charCount))
 }
