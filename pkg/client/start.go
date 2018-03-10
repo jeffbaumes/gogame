@@ -83,7 +83,7 @@ func Start(username, host string, port int) {
 		if float64(time.Since(syncT))/float64(time.Second) > 0.05 {
 			syncT = time.Now()
 			var ret bool
-			cRPC.Call("API.UpdatePersonState", &geom.PersonState{
+			go cRPC.Call("API.UpdatePersonState", &geom.PersonState{
 				Name:     player.name,
 				Position: player.loc,
 				LookDir:  player.lookDir(),
