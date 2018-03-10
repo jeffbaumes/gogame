@@ -244,8 +244,7 @@ func newPeopleRenderer(api *API) *peopleRenderer {
 }
 
 func (peopleRen *peopleRenderer) draw(player *person, w *glfw.Window) {
-	points := []float32{}
-	normals := []float32{}
+	gl.UseProgram(peopleRen.program)
 	for _, p := range peopleRen.api.connectedPeople {
 		pts := make([]float32, len(square))
 		for i := 0; i < len(square); i += 3 {
@@ -253,7 +252,6 @@ func (peopleRen *peopleRenderer) draw(player *person, w *glfw.Window) {
 			pts[i+1] = p.Position[1] + square[i+1]
 			pts[i+2] = p.Position[2] + square[i+2]
 		}
-		points = append(points, pts...)
 
 		nms := make([]float32, len(square))
 		for i := 0; i < len(square); i += 9 {
@@ -269,23 +267,23 @@ func (peopleRen *peopleRenderer) draw(player *person, w *glfw.Window) {
 				nms[i+3*j+2] = n[2]
 			}
 		}
-		normals = append(normals, nms...)
-	}
-	if len(points) == 0 {
-		return
-	}
-	peopleRen.drawable = makeVao(points, normals)
 
-	gl.UseProgram(peopleRen.program)
-	lookDir := player.lookDir()
-	view := mgl32.LookAtV(player.loc, player.loc.Add(lookDir), player.loc.Normalize())
-	width, height := framebufferSize(w)
-	perspective := mgl32.Perspective(45, float32(width)/float32(height), 0.01, 1000)
-	proj := perspective.Mul4(view)
-	gl.UniformMatrix4fv(peopleRen.projectionUniform, 1, false, &proj[0])
+		peopleRen.drawable = makeVao(square, nms)
 
-	gl.BindVertexArray(peopleRen.drawable)
-	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(points)/3))
+		lookDir := player.lookDir()
+		view := mgl32.LookAtV(player.loc, player.loc.Add(lookDir), player.loc.Normalize())
+		width, height := framebufferSize(w)
+		perspective := mgl32.Perspective(45, float32(width)/float32(height), 0.01, 1000)
+		proj := perspective.Mul4(view)
+		proj = proj.Mul4(mgl32.Translate3D(p.Position[0], p.Position[1], p.Position[2]))
+		right := p.LookDir.Cross(p.Position.Normalize()).Normalize()
+		up := right.Cross(p.LookDir).Normalize()
+		proj = proj.Mul4(mgl32.Mat4FromCols(p.LookDir.Vec4(0), up.Vec4(0), right.Vec4(0), mgl32.Vec4{0, 0, 0, 1}))
+		gl.UniformMatrix4fv(peopleRen.projectionUniform, 1, false, &proj[0])
+
+		gl.BindVertexArray(peopleRen.drawable)
+		gl.DrawArrays(gl.TRIANGLES, 0, int32(len(square)/3))
+	}
 }
 
 type planetRenderer struct {
