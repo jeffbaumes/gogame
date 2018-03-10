@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	// Uncomment for profiling
 	// _ "net/http/pprof"
@@ -30,6 +33,30 @@ func main() {
 		port, e = strconv.Atoi(args[2])
 		if e != nil {
 			panic(e)
+		}
+	}
+	if len(args) == 0 {
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Print("Enter your name DO NOT LEAVE BLANK: ")
+
+		namestr, _ := reader.ReadString('\n')
+		if strings.TrimSpace(namestr) != "" {
+			name = namestr
+		}
+		reader = bufio.NewReader(os.Stdin)
+		fmt.Print("Enter host (leave blank for 'localhost'): ")
+		hoststr, _ := reader.ReadString('\n')
+		if strings.TrimSpace(hoststr) != "" {
+			host = strings.TrimSpace(hoststr)
+		}
+		reader = bufio.NewReader(os.Stdin)
+		fmt.Print("Enter port (leave blank for 5555): ")
+		portstr, _ := reader.ReadString('\n')
+		if strings.TrimSpace(portstr) != "" {
+			port, e = strconv.Atoi(strings.TrimSpace(portstr))
+			if e != nil {
+				panic(e)
+			}
 		}
 	}
 	client.Start(name, host, port)

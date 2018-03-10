@@ -36,13 +36,13 @@ func main() {
 		fmt.Print("Enter world name (leave blank for 'default'): ")
 
 		worldstr, _ := reader.ReadString('\n')
-		if worldstr != "" {
+		if strings.TrimSpace(worldstr) != "" {
 			world = worldstr
 		}
 		reader = bufio.NewReader(os.Stdin)
 		fmt.Print("Enter seed (leave blank for 1): ")
 		seedstr, _ := reader.ReadString('\n')
-		if seedstr != "" {
+		if strings.TrimSpace(seedstr) != "" {
 			seed, e = strconv.Atoi(strings.TrimSpace(seedstr))
 			if e != nil {
 				panic(e)
@@ -51,7 +51,7 @@ func main() {
 		reader = bufio.NewReader(os.Stdin)
 		fmt.Print("Enter port (leave blank for 5555): ")
 		portstr, _ := reader.ReadString('\n')
-		if portstr != "" {
+		if strings.TrimSpace(portstr) != "" {
 			port, e = strconv.Atoi(strings.TrimSpace(portstr))
 			if e != nil {
 				panic(e)
