@@ -4,18 +4,19 @@ import "github.com/jeffbaumes/gogame/pkg/geom"
 
 // API is the RPC tag for client calls
 type API struct {
-	planet          *geom.Planet
+	planetRen       *planetRenderer
 	person          *person
 	connectedPeople []*geom.PersonState
 }
 
-func newAPI(planet *geom.Planet, person *person) *API {
-	return &API{planet: planet, person: person}
+func newAPI(planetRen *planetRenderer, person *person) *API {
+	return &API{planetRen: planetRen, person: person}
 }
 
 // SetCellMaterial sets the material for a particular cell
 func (api *API) SetCellMaterial(args *geom.RPCSetCellMaterialArgs, ret *bool) error {
-	*ret = api.planet.SetCellMaterial(args.Index, args.Material)
+	api.planetRen.setCellMaterial(args.Index, args.Material)
+	*ret = true
 	return nil
 }
 

@@ -229,7 +229,9 @@ func drawFrame(h float32, player *person, text *screenText, over *overlay, plane
 type peopleRenderer struct {
 	api               *API
 	program           uint32
-	drawable          uint32
+	drawableVAO       uint32
+	pointsVBO         uint32
+	normalsVBO        uint32
 	projectionUniform int32
 }
 
@@ -240,6 +242,10 @@ func newPeopleRenderer(api *API) *peopleRenderer {
 	bindAttribute(peopleRen.program, 0, "vp")
 	bindAttribute(peopleRen.program, 1, "n")
 	peopleRen.projectionUniform = uniformLocation(peopleRen.program, "proj")
+	peopleRen.pointsVBO = newVBO()
+	fillVBO(peopleRen.pointsVBO, square)
+	peopleRen.normalsVBO = newVBO()
+	peopleRen.drawableVAO = newPointsNormalsVAO(peopleRen.pointsVBO, peopleRen.normalsVBO)
 	return &peopleRen
 }
 
@@ -268,7 +274,7 @@ func (peopleRen *peopleRenderer) draw(player *person, w *glfw.Window) {
 			}
 		}
 
-		peopleRen.drawable = makeVao(square, nms)
+		fillVBO(peopleRen.normalsVBO, nms)
 
 		lookDir := player.lookDir()
 		view := mgl32.LookAtV(player.loc, player.loc.Add(lookDir), player.loc.Normalize())
@@ -281,13 +287,14 @@ func (peopleRen *peopleRenderer) draw(player *person, w *glfw.Window) {
 		proj = proj.Mul4(mgl32.Mat4FromCols(p.LookDir.Vec4(0), up.Vec4(0), right.Vec4(0), mgl32.Vec4{0, 0, 0, 1}))
 		gl.UniformMatrix4fv(peopleRen.projectionUniform, 1, false, &proj[0])
 
-		gl.BindVertexArray(peopleRen.drawable)
+		gl.BindVertexArray(peopleRen.drawableVAO)
 		gl.DrawArrays(gl.TRIANGLES, 0, int32(len(square)/3))
 	}
 }
 
 type planetRenderer struct {
 	planet            *geom.Planet
+	chunkRenderers    map[geom.ChunkIndex]*chunkRenderer
 	program           uint32
 	projectionUniform int32
 }
@@ -296,10 +303,21 @@ func newPlanetRenderer(planet *geom.Planet) *planetRenderer {
 	pr := planetRenderer{}
 	pr.planet = planet
 	pr.program = createProgram(vertexShaderSource, fragmentShaderSource)
+	pr.chunkRenderers = make(map[geom.ChunkIndex]*chunkRenderer)
 	bindAttribute(pr.program, 0, "vp")
 	bindAttribute(pr.program, 1, "n")
 	pr.projectionUniform = uniformLocation(pr.program, "proj")
 	return &pr
+}
+
+func (planetRen *planetRenderer) setCellMaterial(ind geom.CellIndex, material int) {
+	planetRen.planet.SetCellMaterial(ind, material)
+	chunkInd := planetRen.planet.CellIndexToChunkIndex(ind)
+	chunkRen := planetRen.chunkRenderers[chunkInd]
+	if chunkRen == nil {
+		return
+	}
+	chunkRen.geometryUpdated = false
 }
 
 func (planetRen *planetRenderer) draw(player *person, w *glfw.Window) {
@@ -312,14 +330,37 @@ func (planetRen *planetRenderer) draw(player *person, w *glfw.Window) {
 	gl.UniformMatrix4fv(planetRen.projectionUniform, 1, false, &proj[0])
 
 	for key, chunk := range planetRen.planet.Chunks {
-		if !chunk.GraphicsInitialized {
-			initChunkGraphics(chunk, planetRen.planet, key.Lon, key.Lat, key.Alt)
+		cr := planetRen.chunkRenderers[key]
+		if cr == nil {
+			cr = newChunkRenderer(chunk)
+			planetRen.chunkRenderers[key] = cr
 		}
-		drawChunk(chunk)
+		if !cr.geometryUpdated {
+			cr.updateGeometry(planetRen.planet, key.Lon, key.Lat, key.Alt)
+		}
+		cr.draw()
 	}
 }
 
-func initChunkGraphics(c *geom.Chunk, planet *geom.Planet, lonIndex, latIndex, altIndex int) {
+type chunkRenderer struct {
+	chunk           *geom.Chunk
+	drawableVAO     uint32
+	pointsVBO       uint32
+	normalsVBO      uint32
+	numTriangles    int32
+	geometryUpdated bool
+}
+
+func newChunkRenderer(chunk *geom.Chunk) *chunkRenderer {
+	cr := chunkRenderer{}
+	cr.chunk = chunk
+	cr.pointsVBO = newVBO()
+	cr.normalsVBO = newVBO()
+	cr.drawableVAO = newPointsNormalsVAO(cr.pointsVBO, cr.normalsVBO)
+	return &cr
+}
+
+func (cr *chunkRenderer) updateGeometry(planet *geom.Planet, lonIndex, latIndex, altIndex int) {
 	cs := geom.ChunkSize
 	points := []float32{}
 	normals := []float32{}
@@ -327,7 +368,7 @@ func initChunkGraphics(c *geom.Chunk, planet *geom.Planet, lonIndex, latIndex, a
 	for cLon := 0; cLon < cs; cLon++ {
 		for cLat := 0; cLat < cs; cLat++ {
 			for cAlt := 0; cAlt < cs; cAlt++ {
-				if c.Cells[cLon][cLat][cAlt].Material != geom.Air {
+				if cr.chunk.Cells[cLon][cLat][cAlt].Material != geom.Air {
 					pts := make([]float32, len(square))
 					for i := 0; i < len(square); i += 3 {
 						l := geom.CellLoc{
@@ -362,19 +403,21 @@ func initChunkGraphics(c *geom.Chunk, planet *geom.Planet, lonIndex, latIndex, a
 			}
 		}
 	}
-	c.Drawable = makeVao(points, normals)
-	c.GraphicsInitialized = true
+	fillVBO(cr.pointsVBO, points)
+	fillVBO(cr.normalsVBO, normals)
+	cr.numTriangles = int32(len(points) / 3)
+	cr.geometryUpdated = true
 }
 
-func drawChunk(chunk *geom.Chunk) {
-	gl.BindVertexArray(chunk.Drawable)
-	cs := geom.ChunkSize
-	gl.DrawArrays(gl.TRIANGLES, 0, int32(cs*cs*cs*len(square)/3))
+func (cr *chunkRenderer) draw() {
+	gl.BindVertexArray(cr.drawableVAO)
+	gl.DrawArrays(gl.TRIANGLES, 0, cr.numTriangles)
 }
 
 type overlay struct {
 	program           uint32
-	drawable          uint32
+	drawableVAO       uint32
+	pointsVBO         uint32
 	projectionUniform int32
 }
 
@@ -387,7 +430,9 @@ func newOverlay() *overlay {
 		0.0, -20.0, 0.0,
 		0.0, 19.0, 0.0,
 	}
-	over.drawable = makePointsVao(points, 3)
+	over.pointsVBO = newVBO()
+	fillVBO(over.pointsVBO, points)
+	over.drawableVAO = newPointsVAO(over.pointsVBO, 3)
 
 	over.program = createProgram(vertexShaderSourceHUD, fragmentShaderSourceHUD)
 	bindAttribute(over.program, 0, "vp")
@@ -402,7 +447,7 @@ func (over *overlay) draw(w *glfw.Window) {
 	proj := mgl32.Scale3D(1/float32(width), 1/float32(height), 1.0)
 	gl.UniformMatrix4fv(over.projectionUniform, 1, false, &proj[0])
 
-	gl.BindVertexArray(over.drawable)
+	gl.BindVertexArray(over.drawableVAO)
 	gl.DrawArrays(gl.LINES, 0, 4)
 }
 
@@ -410,7 +455,9 @@ type screenText struct {
 	charInfo       map[string]charInfo
 	statusLine     textLine
 	charCount      int
-	textDrawable   uint32
+	drawableVAO    uint32
+	pointsVBO      uint32
+	numTriangles   int32
 	program        uint32
 	texture        uint32
 	textureUniform int32
@@ -436,6 +483,9 @@ func newScreenText() *screenText {
 	bindAttribute(text.program, 0, "coord")
 
 	text.textureUniform = uniformLocation(text.program, "texture")
+
+	text.pointsVBO = newVBO()
+	text.drawableVAO = newPointsVAO(text.pointsVBO, 4)
 
 	// Load up texture info
 	var textMeta map[string]interface{}
@@ -522,7 +572,7 @@ func (text *screenText) computeGeometry(width, height int) {
 		}...)
 		text.charCount++
 	}
-	text.textDrawable = makePointsVao(points, 4)
+	fillVBO(text.pointsVBO, points)
 }
 
 func (text *screenText) draw(player *person, w *glfw.Window) {
@@ -532,6 +582,6 @@ func (text *screenText) draw(player *person, w *glfw.Window) {
 
 	gl.UseProgram(text.program)
 	gl.Uniform1i(text.textureUniform, int32(text.texture))
-	gl.BindVertexArray(text.textDrawable)
+	gl.BindVertexArray(text.drawableVAO)
 	gl.DrawArrays(gl.TRIANGLES, 0, 6*int32(text.charCount))
 }

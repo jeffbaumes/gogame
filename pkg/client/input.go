@@ -99,8 +99,9 @@ func windowSizeCallback(w *glfw.Window, wd, ht int) {
 	gl.Viewport(0, 0, int32(fwidth), int32(fheight))
 }
 
-func mouseButtonCallback(player *person, planet *geom.Planet) func(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
+func mouseButtonCallback(player *person, planetRen *planetRenderer) func(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
 	return func(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
+		planet := planetRen.planet
 		if cursorGrabbed(w) {
 			if action == glfw.Press && button == glfw.MouseButtonLeft {
 				increment := player.lookDir().Mul(0.05)
@@ -110,7 +111,7 @@ func mouseButtonCallback(player *person, planet *geom.Planet) func(w *glfw.Windo
 					cell := planet.CartesianToCell(pos)
 					if cell != nil && cell.Material != geom.Air {
 						cellIndex := planet.CartesianToCellIndex(pos)
-						planet.SetCellMaterial(cellIndex, geom.Air)
+						planetRen.setCellMaterial(cellIndex, geom.Air)
 						break
 					}
 				}
@@ -128,7 +129,7 @@ func mouseButtonCallback(player *person, planet *geom.Planet) func(w *glfw.Windo
 						cell := planet.CellIndexToCell(cellIndex)
 						if cell != nil && cell.Material != geom.Air {
 							if prevCellIndex.Lon != -1 {
-								planet.SetCellMaterial(prevCellIndex, geom.Rock)
+								planetRen.setCellMaterial(prevCellIndex, geom.Rock)
 							}
 							break
 						}

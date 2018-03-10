@@ -105,11 +105,7 @@ func (p *Planet) SetCellMaterial(ind CellIndex, material int) bool {
 	if cell.Material == material {
 		return false
 	}
-
 	cell.Material = material
-	chunk := p.CellIndexToChunk(ind)
-	chunk.GraphicsInitialized = false
-
 	if p.rpc != nil {
 		var ret bool
 		e := p.rpc.Call("API.SetCellMaterial", RPCSetCellMaterialArgs{
@@ -265,9 +261,7 @@ func (p *Planet) CellLocToSpherical(l CellLoc) (r, theta, phi float32) {
 
 // Chunk is a 3D block of planet cells
 type Chunk struct {
-	Drawable            uint32
-	GraphicsInitialized bool
-	Cells               [][][]*Cell
+	Cells [][][]*Cell
 }
 
 func newChunk(ind ChunkIndex, p *Planet) *Chunk {

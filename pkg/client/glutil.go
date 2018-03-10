@@ -25,40 +25,37 @@ func createProgram(vertexSource, fragmentSource string) uint32 {
 	return program
 }
 
-func makePointsVao(points []float32, size int32) uint32 {
-	var vbo = make([]uint32, 2)
-	gl.GenBuffers(1, (*uint32)(gl.Ptr(vbo)))
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo[0])
-	gl.BufferData(gl.ARRAY_BUFFER, 4*len(points), gl.Ptr(points), gl.STATIC_DRAW)
+func newVBO() uint32 {
+	var vbo uint32
+	gl.GenBuffers(2, &vbo)
+	return vbo
+}
 
+func fillVBO(vbo uint32, data []float32) {
+	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
+	gl.BufferData(gl.ARRAY_BUFFER, 4*len(data), gl.Ptr(data), gl.STATIC_DRAW)
+}
+
+func newPointsNormalsVAO(pointsVBO, normalsVBO uint32) uint32 {
 	var vao uint32
 	gl.GenVertexArrays(1, &vao)
 	gl.BindVertexArray(vao)
 	gl.EnableVertexAttribArray(0)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo[0])
-	gl.VertexAttribPointer(0, size, gl.FLOAT, false, 0, nil)
-
+	gl.BindBuffer(gl.ARRAY_BUFFER, pointsVBO)
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 0, nil)
+	gl.EnableVertexAttribArray(1)
+	gl.BindBuffer(gl.ARRAY_BUFFER, normalsVBO)
+	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, 0, nil)
 	return vao
 }
 
-func makeVao(points []float32, normals []float32) uint32 {
-	var vbo = make([]uint32, 2)
-	gl.GenBuffers(2, (*uint32)(gl.Ptr(vbo)))
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo[0])
-	gl.BufferData(gl.ARRAY_BUFFER, 4*len(points), gl.Ptr(points), gl.STATIC_DRAW)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo[1])
-	gl.BufferData(gl.ARRAY_BUFFER, 4*len(normals), gl.Ptr(normals), gl.STATIC_DRAW)
-
+func newPointsVAO(pointsVBO uint32, size int32) uint32 {
 	var vao uint32
 	gl.GenVertexArrays(1, &vao)
 	gl.BindVertexArray(vao)
 	gl.EnableVertexAttribArray(0)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo[0])
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 0, nil)
-	gl.EnableVertexAttribArray(1)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo[1])
-	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, 0, nil)
-
+	gl.BindBuffer(gl.ARRAY_BUFFER, pointsVBO)
+	gl.VertexAttribPointer(0, size, gl.FLOAT, false, 0, nil)
 	return vao
 }
 

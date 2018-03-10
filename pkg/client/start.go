@@ -22,6 +22,10 @@ const (
 func Start(username, host string, port int) {
 	runtime.LockOSThread()
 
+	window := initGlfw()
+	defer glfw.Terminate()
+	initOpenGL()
+
 	player := newPerson(username)
 
 	conn, err := net.Dial("tcp", fmt.Sprintf("%v:%v", host, port))
@@ -42,6 +46,9 @@ func Start(username, host string, port int) {
 
 	// Create planet
 	planet := geom.NewPlanet(50.0, 16, 0, cRPC)
+	planetRen := newPlanetRenderer(planet)
+	over := newOverlay()
+	text := newScreenText()
 
 	// Setup server connection
 	smuxConn, e := cmux.Accept()
@@ -49,22 +56,17 @@ func Start(username, host string, port int) {
 		panic(e)
 	}
 	s := rpc.NewServer()
-	clientAPI := newAPI(planet, player)
+	clientAPI := newAPI(planetRen, player)
 	s.Register(clientAPI)
 	go s.ServeConn(smuxConn)
 
-	window := initGlfw()
+	peopleRen := newPeopleRenderer(clientAPI)
+
 	window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
 	window.SetKeyCallback(keyCallback(player))
 	window.SetCursorPosCallback(cursorPosCallback(player))
 	window.SetSizeCallback(windowSizeCallback)
-	window.SetMouseButtonCallback(mouseButtonCallback(player, planet))
-	defer glfw.Terminate()
-	initOpenGL()
-	planetRen := newPlanetRenderer(planet)
-	peopleRen := newPeopleRenderer(clientAPI)
-	over := newOverlay()
-	text := newScreenText()
+	window.SetMouseButtonCallback(mouseButtonCallback(player, planetRen))
 
 	t := time.Now()
 	syncT := t
