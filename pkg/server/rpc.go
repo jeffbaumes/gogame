@@ -20,6 +20,29 @@ func (api *API) GetChunk(args *geom.ChunkIndex, chunk *geom.Chunk) error {
 	return nil
 }
 
+// UpdatePersonState updates a person's position
+func (api *API) UpdatePersonState(state *geom.PersonState, ret *bool) error {
+	var validPeople []*connectedPerson
+	for _, c := range api.connectedPeople {
+		if c.state.Name == state.Name {
+			c.state = *state
+		} else {
+			var r bool
+			e := c.rpc.Call("API.UpdatePersonState", state, &r)
+			if e != nil {
+				if e.Error() == "connection is shut down" {
+					api.personDisconnected(c.state.Name)
+					continue
+				}
+				log.Println("UpdatePersonState error:", e)
+			}
+		}
+		validPeople = append(validPeople, c)
+	}
+	api.connectedPeople = validPeople
+	return nil
+}
+
 // SetCellMaterial sets the material for a particular cell
 func (api *API) SetCellMaterial(args *geom.RPCSetCellMaterialArgs, ret *bool) error {
 	*ret = p.SetCellMaterial(args.Index, args.Material)
@@ -29,8 +52,7 @@ func (api *API) SetCellMaterial(args *geom.RPCSetCellMaterialArgs, ret *bool) er
 		e := c.rpc.Call("API.SetCellMaterial", args, &ret)
 		if e != nil {
 			if e.Error() == "connection is shut down" {
-				// Drop the client from the list
-				// TODO: Should let the other clients know that this player is gone
+				api.personDisconnected(c.state.Name)
 				continue
 			}
 			log.Println("SetCellMaterial error:", e)
@@ -39,4 +61,12 @@ func (api *API) SetCellMaterial(args *geom.RPCSetCellMaterialArgs, ret *bool) er
 	}
 	api.connectedPeople = validPeople
 	return nil
+}
+
+func (api *API) personDisconnected(name string) {
+	log.Printf("%v disconnected", name)
+	for _, c := range api.connectedPeople {
+		var ret bool
+		c.rpc.Call("API.PersonDisconnected", name, &ret)
+	}
 }

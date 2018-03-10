@@ -6,4 +6,5 @@ import "github.com/go-gl/mathgl/mgl32"
 type PersonState struct {
 	Name     string
 	Position mgl32.Vec3
+	LookDir  mgl32.Vec3
 }

@@ -103,6 +103,39 @@ const (
 		}
 	`
 
+	vertexShaderSourcePeople = `
+		#version 410
+		in vec3 vp;
+		in vec3 n;
+		uniform mat4 proj;
+		out vec3 color;
+		out vec3 light;
+		void main() {
+			color = n;
+			gl_Position = proj * vec4(vp, 1.0);
+
+			// Apply lighting effect
+			highp vec3 ambientLight = vec3(0.0, 0.0, 0.2);
+			highp vec3 light1Color = vec3(0.5, 0.5, 0.4);
+			highp vec3 light1Dir = normalize(vec3(0.85, 0.8, 0.75));
+			highp float light1 = max(dot(n, light1Dir), 0.0);
+			highp vec3 light2Color = vec3(0.1, 0.1, 0.2);
+			highp vec3 light2Dir = normalize(vec3(-0.85, -0.8, -0.75));
+			highp float light2 = max(dot(n, light2Dir), 0.0);
+			light = ambientLight + (light1Color * light1) + (light2Color * light2);
+		}
+	`
+
+	fragmentShaderSourcePeople = `
+		#version 410
+		in vec3 color;
+		in vec3 light;
+		out vec4 frag_color;
+		void main() {
+			frag_color = vec4(light, 1.0);
+		}
+	`
+
 	vertexShaderSourceHUD = `
 		#version 410
 		in vec3 vp;
@@ -181,15 +214,78 @@ func initOpenGL() {
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 }
 
-func drawFrame(h float32, player *person, text *screenText, over *overlay, planetRen *planetRenderer, window *glfw.Window) {
+func drawFrame(h float32, player *person, text *screenText, over *overlay, planetRen *planetRenderer, peopleRen *peopleRenderer, window *glfw.Window) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
 	planetRen.draw(player, window)
+	peopleRen.draw(player, window)
 	over.draw(window)
 	text.draw(player, window)
 
 	glfw.PollEvents()
 	window.SwapBuffers()
+}
+
+type peopleRenderer struct {
+	api               *API
+	program           uint32
+	drawable          uint32
+	projectionUniform int32
+}
+
+func newPeopleRenderer(api *API) *peopleRenderer {
+	peopleRen := peopleRenderer{}
+	peopleRen.api = api
+	peopleRen.program = createProgram(vertexShaderSourcePeople, fragmentShaderSourcePeople)
+	bindAttribute(peopleRen.program, 0, "vp")
+	bindAttribute(peopleRen.program, 1, "n")
+	peopleRen.projectionUniform = uniformLocation(peopleRen.program, "proj")
+	return &peopleRen
+}
+
+func (peopleRen *peopleRenderer) draw(player *person, w *glfw.Window) {
+	points := []float32{}
+	normals := []float32{}
+	for _, p := range peopleRen.api.connectedPeople {
+		pts := make([]float32, len(square))
+		for i := 0; i < len(square); i += 3 {
+			pts[i] = p.Position[0] + square[i]
+			pts[i+1] = p.Position[1] + square[i+1]
+			pts[i+2] = p.Position[2] + square[i+2]
+		}
+		points = append(points, pts...)
+
+		nms := make([]float32, len(square))
+		for i := 0; i < len(square); i += 9 {
+			p1 := mgl32.Vec3{pts[i+0], pts[i+1], pts[i+2]}
+			p2 := mgl32.Vec3{pts[i+3], pts[i+4], pts[i+5]}
+			p3 := mgl32.Vec3{pts[i+6], pts[i+7], pts[i+8]}
+			v1 := p1.Sub(p2)
+			v2 := p1.Sub(p3)
+			n := v1.Cross(v2).Normalize()
+			for j := 0; j < 3; j++ {
+				nms[i+3*j+0] = n[0]
+				nms[i+3*j+1] = n[1]
+				nms[i+3*j+2] = n[2]
+			}
+		}
+		normals = append(normals, nms...)
+	}
+	if len(points) == 0 {
+		return
+	}
+	peopleRen.drawable = makeVao(points, normals)
+
+	gl.UseProgram(peopleRen.program)
+	lookDir := player.lookDir()
+	view := mgl32.LookAtV(player.loc, player.loc.Add(lookDir), player.loc.Normalize())
+	width, height := framebufferSize(w)
+	perspective := mgl32.Perspective(45, float32(width)/float32(height), 0.01, 1000)
+	proj := perspective.Mul4(view)
+	gl.UniformMatrix4fv(peopleRen.projectionUniform, 1, false, &proj[0])
+
+	gl.BindVertexArray(peopleRen.drawable)
+	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(points)/3))
 }
 
 type planetRenderer struct {

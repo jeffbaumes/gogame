@@ -22,7 +22,7 @@ const (
 func Start(username, host string, port int) {
 	runtime.LockOSThread()
 
-	player := newPerson("mainnose")
+	player := newPerson(username)
 
 	conn, err := net.Dial("tcp", fmt.Sprintf("%v:%v", host, port))
 	if err != nil {
@@ -62,18 +62,30 @@ func Start(username, host string, port int) {
 	defer glfw.Terminate()
 	initOpenGL()
 	planetRen := newPlanetRenderer(planet)
+	peopleRen := newPeopleRenderer(clientAPI)
 	over := newOverlay()
 	text := newScreenText()
 
 	t := time.Now()
+	syncT := t
 	for !window.ShouldClose() {
 		h := float32(time.Since(t)) / float32(time.Second)
 		t = time.Now()
 
-		drawFrame(h, player, text, over, planetRen, window)
+		drawFrame(h, player, text, over, planetRen, peopleRen, window)
 
 		if cursorGrabbed(window) {
 			player.updatePosition(h, planet)
+		}
+
+		if float64(time.Since(syncT))/float64(time.Second) > 0.05 {
+			syncT = time.Now()
+			var ret bool
+			cRPC.Call("API.UpdatePersonState", &geom.PersonState{
+				Name:     player.name,
+				Position: player.loc,
+				LookDir:  player.lookDir(),
+			}, &ret)
 		}
 
 		time.Sleep(time.Second/time.Duration(targetFPS) - time.Since(t))
