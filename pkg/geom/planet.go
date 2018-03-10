@@ -1,6 +1,9 @@
 package geom
 
 import (
+	"bytes"
+	"database/sql"
+	"encoding/gob"
 	"log"
 	"math"
 	"net/rpc"
@@ -18,20 +21,20 @@ const (
 type PlanetState struct {
 	AltMin, AltDelta, LatMax     float64
 	LonCells, LatCells, AltCells int
-	Cells                        [][][]*Cell
 	Seed                         int
 }
 
 // Planet represents all the cells in a spherical planet
 type Planet struct {
 	rpc    *rpc.Client
+	db     *sql.DB
 	Chunks map[ChunkIndex]*Chunk
 	noise  *opensimplex.Noise
 	PlanetState
 }
 
 // NewPlanet constructs a Planet instance
-func NewPlanet(radius float64, altCells, seed int, crpc *rpc.Client) *Planet {
+func NewPlanet(radius float64, altCells, seed int, crpc *rpc.Client, db *sql.DB) *Planet {
 	p := Planet{}
 	p.Seed = seed
 	p.noise = opensimplex.NewWithSeed(int64(seed))
@@ -43,6 +46,7 @@ func NewPlanet(radius float64, altCells, seed int, crpc *rpc.Client) *Planet {
 	p.AltCells = altCells / ChunkSize * ChunkSize
 	p.Chunks = make(map[ChunkIndex]*Chunk)
 	p.rpc = crpc
+	p.db = db
 	return &p
 }
 
@@ -76,8 +80,50 @@ func (p *Planet) GetChunk(ind ChunkIndex) *Chunk {
 	chunk := p.Chunks[ind]
 	if chunk == nil {
 		if p.rpc == nil {
-			chunk = newChunk(ind, p)
-			p.Chunks[ind] = chunk
+			if p.db != nil {
+				rows, e := p.db.Query("SELECT data FROM chunk WHERE planet = 0 AND lon = ? AND lat = ? AND alt = ?", ind.Lon, ind.Lat, ind.Alt)
+				if e != nil {
+					panic(e)
+				}
+				if rows.Next() {
+					var data []byte
+					e = rows.Scan(&data)
+					if e != nil {
+						panic(e)
+					}
+					var dbuf bytes.Buffer
+					dbuf.Write(data)
+					dec := gob.NewDecoder(&dbuf)
+					var ch Chunk
+					e = dec.Decode(&ch)
+					if e != nil {
+						panic(e)
+					}
+					chunk = &ch
+				}
+				rows.Close()
+				if chunk == nil {
+					chunk = newChunk(ind, p)
+					stmt, e := p.db.Prepare("INSERT INTO chunk VALUES (?, ?, ?, ?, ?)")
+					if e != nil {
+						panic(e)
+					}
+					var buf bytes.Buffer
+					enc := gob.NewEncoder(&buf)
+					e = enc.Encode(chunk)
+					if e != nil {
+						panic(e)
+					}
+					_, e = stmt.Exec(0, ind.Lon, ind.Lat, ind.Alt, buf.Bytes())
+					if e != nil {
+						panic(e)
+					}
+				}
+				p.Chunks[ind] = chunk
+			} else {
+				chunk = newChunk(ind, p)
+				p.Chunks[ind] = chunk
+			}
 		} else {
 			rchunk := Chunk{}
 			e := p.rpc.Call("API.GetChunk", ind, &rchunk)
@@ -114,6 +160,24 @@ func (p *Planet) SetCellMaterial(ind CellIndex, material int) bool {
 		}, &ret)
 		if e != nil {
 			log.Fatal("SetCellMaterial error:", e)
+		}
+	}
+	if p.db != nil {
+		chunkInd := p.CellIndexToChunkIndex(ind)
+		chunk := p.CellIndexToChunk(ind)
+		stmt, e := p.db.Prepare("UPDATE chunk SET data = ? WHERE planet = 0 AND lon = ? AND lat = ? AND alt = ?")
+		if e != nil {
+			panic(e)
+		}
+		var buf bytes.Buffer
+		enc := gob.NewEncoder(&buf)
+		e = enc.Encode(chunk)
+		if e != nil {
+			panic(e)
+		}
+		_, e = stmt.Exec(buf.Bytes(), chunkInd.Lon, chunkInd.Lat, chunkInd.Alt)
+		if e != nil {
+			panic(e)
 		}
 	}
 

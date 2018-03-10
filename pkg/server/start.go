@@ -24,13 +24,13 @@ func Start(name string, seed, port int) {
 
 	db, err := sql.Open("sqlite3", dbName)
 	checkErr(err)
-	defer db.Close()
+	// defer db.Close()
 
 	stmt, err := db.Prepare("CREATE TABLE IF NOT EXISTS setting (name TEXT PRIMARY KEY, val TEXT)")
 	checkErr(err)
 	_, err = stmt.Exec()
 	checkErr(err)
-	stmt, err = db.Prepare("CREATE TABLE IF NOT EXISTS chunk (planet INT, lat INT, lon INT, alt INT, data BLOB, PRIMARY KEY (planet, lat, lon, alt))")
+	stmt, err = db.Prepare("CREATE TABLE IF NOT EXISTS chunk (planet INT, lon INT, lat INT, alt INT, data BLOB, PRIMARY KEY (planet, lat, lon, alt))")
 	checkErr(err)
 	_, err = stmt.Exec()
 	checkErr(err)
@@ -98,7 +98,7 @@ func Start(name string, seed, port int) {
 	// err = dec.Decode(&c)
 	// checkErr(err)
 
-	p = geom.NewPlanet(50.0, 16, 0, nil)
+	p = geom.NewPlanet(50.0, 16, 0, nil, db)
 
 	api := new(API)
 	listener, e := net.Listen("tcp", fmt.Sprintf(":%v", port))

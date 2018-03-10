@@ -45,7 +45,7 @@ func Start(username, host string, port int) {
 	cRPC := rpc.NewClient(stream)
 
 	// Create planet
-	planet := geom.NewPlanet(50.0, 16, 0, cRPC)
+	planet := geom.NewPlanet(50.0, 16, 0, cRPC, nil)
 	planetRen := newPlanetRenderer(planet)
 	over := newOverlay()
 	text := newScreenText()
