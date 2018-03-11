@@ -18,6 +18,56 @@ import (
 )
 
 var (
+	squareTcoords = []float32{
+		0, 1,
+		0, 0,
+		1, 0,
+
+		0, 1,
+		1, 0,
+		1, 1,
+
+		0, 1,
+		0, 0,
+		1, 0,
+
+		0, 1,
+		1, 0,
+		1, 1,
+
+		0, 1,
+		0, 0,
+		1, 0,
+
+		0, 1,
+		1, 0,
+		1, 1,
+
+		0, 1,
+		0, 0,
+		1, 0,
+
+		0, 1,
+		1, 0,
+		1, 1,
+
+		0, 1,
+		0, 0,
+		1, 0,
+
+		0, 1,
+		1, 0,
+		1, 1,
+
+		0, 1,
+		0, 0,
+		1, 0,
+
+		0, 1,
+		1, 0,
+		1, 1,
+	}
+
 	square = []float32{
 		-0.5, 0.5, 0.5,
 		-0.5, -0.5, 0.5,
@@ -74,19 +124,22 @@ const (
 		#version 410
 		in vec3 vp;
 		in vec3 n;
+		in vec2 t;
 		uniform mat4 proj;
 		out vec3 color;
 		out vec3 light;
+		out vec2 texcoord;
 		void main() {
 			color = n;
+			texcoord = t;
 			gl_Position = proj * vec4(vp, 1.0);
 
 			// Apply lighting effect
-			highp vec3 ambientLight = vec3(0.1, 0.2, 0.1);
-			highp vec3 light1Color = vec3(0.5, 0.5, 0.4);
+			highp vec3 ambientLight = vec3(0.5, 0.5, 0.5);
+			highp vec3 light1Color = vec3(0.3, 0.3, 0.3);
 			highp vec3 light1Dir = normalize(vec3(0.85, 0.8, 0.75));
 			highp float light1 = max(dot(n, light1Dir), 0.0);
-			highp vec3 light2Color = vec3(0.1, 0.1, 0.2);
+			highp vec3 light2Color = vec3(0.2, 0.2, 0.2);
 			highp vec3 light2Dir = normalize(vec3(-0.85, -0.8, -0.75));
 			highp float light2 = max(dot(n, light2Dir), 0.0);
 			light = ambientLight + (light1Color * light1) + (light2Color * light2);
@@ -97,9 +150,14 @@ const (
 		#version 410
 		in vec3 color;
 		in vec3 light;
+		in vec2 texcoord;
+		uniform sampler2D texBase;
 		out vec4 frag_color;
 		void main() {
-			frag_color = vec4(light, 1.0);
+			vec4 texel = texture(texBase, texcoord);
+			// frag_color = vec4(1,1,1,1);
+			// frag_color = vec4(light, 1.0);
+			frag_color = texel * vec4(light, 1.0);
 		}
 	`
 
@@ -169,11 +227,11 @@ const (
 		#version 410
 
 		in vec2 texcoord;
-		uniform sampler2D tex;
+		uniform sampler2D texFont;
 		out vec4 frag_color;
 
 		void main(void) {
-			vec4 texel = texture(tex, texcoord);
+			vec4 texel = texture(texFont, texcoord);
 			if (texel.a < 0.5) {
 				discard;
 		  }
@@ -296,6 +354,9 @@ type planetRenderer struct {
 	planet            *geom.Planet
 	chunkRenderers    map[geom.ChunkIndex]*chunkRenderer
 	program           uint32
+	texture           uint32
+	textureUnit       int32
+	textureUniform    int32
 	projectionUniform int32
 }
 
@@ -306,7 +367,50 @@ func newPlanetRenderer(planet *geom.Planet) *planetRenderer {
 	pr.chunkRenderers = make(map[geom.ChunkIndex]*chunkRenderer)
 	bindAttribute(pr.program, 0, "vp")
 	bindAttribute(pr.program, 1, "n")
+	bindAttribute(pr.program, 2, "t")
 	pr.projectionUniform = uniformLocation(pr.program, "proj")
+	pr.textureUniform = uniformLocation(pr.program, "texBase")
+	log.Println(pr.textureUniform)
+
+	existingImageFile, err := os.Open("grass2.png")
+	if err != nil {
+		panic(err)
+	}
+	defer existingImageFile.Close()
+	img, err := png.Decode(existingImageFile)
+	if err != nil {
+		panic(err)
+	}
+	rgba := image.NewRGBA(img.Bounds())
+	draw.Draw(rgba, rgba.Bounds(), img, image.Pt(0, 0), draw.Src)
+	// log.Println(rgba)
+
+	pr.textureUnit = 1
+	gl.ActiveTexture(uint32(gl.TEXTURE0 + pr.textureUnit))
+	gl.GenTextures(1, &pr.texture)
+	gl.BindTexture(gl.TEXTURE_2D, pr.texture)
+
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+
+	gl.TexImage2D(
+		gl.TEXTURE_2D,
+		0,
+		gl.SRGB_ALPHA,
+		int32(rgba.Rect.Size().X),
+		int32(rgba.Rect.Size().Y),
+		0,
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		gl.Ptr(rgba.Pix),
+	)
+	// log.Println(rgba.Pix)
+	// log.Println(rgba.Rect)
+
+	gl.GenerateMipmap(gl.TEXTURE_2D)
+
 	return &pr
 }
 
@@ -328,6 +432,7 @@ func (planetRen *planetRenderer) draw(player *person, w *glfw.Window) {
 	perspective := mgl32.Perspective(45, float32(width)/float32(height), 0.01, 1000)
 	proj := perspective.Mul4(view)
 	gl.UniformMatrix4fv(planetRen.projectionUniform, 1, false, &proj[0])
+	gl.Uniform1i(planetRen.textureUniform, planetRen.textureUnit)
 
 	for key, chunk := range planetRen.planet.Chunks {
 		cr := planetRen.chunkRenderers[key]
@@ -347,6 +452,7 @@ type chunkRenderer struct {
 	drawableVAO     uint32
 	pointsVBO       uint32
 	normalsVBO      uint32
+	tcoordsVBO      uint32
 	numTriangles    int32
 	geometryUpdated bool
 }
@@ -356,7 +462,8 @@ func newChunkRenderer(chunk *geom.Chunk) *chunkRenderer {
 	cr.chunk = chunk
 	cr.pointsVBO = newVBO()
 	cr.normalsVBO = newVBO()
-	cr.drawableVAO = newPointsNormalsVAO(cr.pointsVBO, cr.normalsVBO)
+	cr.tcoordsVBO = newVBO()
+	cr.drawableVAO = newPointsNormalsTcoordsVAO(cr.pointsVBO, cr.normalsVBO, cr.tcoordsVBO)
 	return &cr
 }
 
@@ -364,6 +471,7 @@ func (cr *chunkRenderer) updateGeometry(planet *geom.Planet, lonIndex, latIndex,
 	cs := geom.ChunkSize
 	points := []float32{}
 	normals := []float32{}
+	tcoords := []float32{}
 
 	for cLon := 0; cLon < cs; cLon++ {
 		for cLat := 0; cLat < cs; cLat++ {
@@ -399,12 +507,22 @@ func (cr *chunkRenderer) updateGeometry(planet *geom.Planet, lonIndex, latIndex,
 						}
 					}
 					normals = append(normals, nms...)
+
+					// tcs := make([]float32, len(square)/3*2)
+					// for i := 0; i < len(square)/3*2; i += 2 {
+					// 	// tcs[i+0] = float32((i / 2) % 2)
+					// 	// tcs[i+1] = float32(1 - ((i / 2) % 2))
+					// 	tcs[i+0] = 0.5
+					// 	tcs[i+1] = 0.5
+					// }
+					tcoords = append(tcoords, squareTcoords...)
 				}
 			}
 		}
 	}
 	fillVBO(cr.pointsVBO, points)
 	fillVBO(cr.normalsVBO, normals)
+	fillVBO(cr.tcoordsVBO, tcoords)
 	cr.numTriangles = int32(len(points) / 3)
 	cr.geometryUpdated = true
 }
@@ -460,6 +578,7 @@ type screenText struct {
 	numTriangles   int32
 	program        uint32
 	texture        uint32
+	textureUnit    int32
 	textureUniform int32
 }
 
@@ -482,14 +601,18 @@ func newScreenText() *screenText {
 	text.program = createProgram(vertexShaderSourceText, fragmentShaderSourceText)
 	bindAttribute(text.program, 0, "coord")
 
-	text.textureUniform = uniformLocation(text.program, "texture")
+	text.textureUniform = uniformLocation(text.program, "texFont")
+	log.Println(text.textureUniform)
 
 	text.pointsVBO = newVBO()
 	text.drawableVAO = newPointsVAO(text.pointsVBO, 4)
 
 	// Load up texture info
 	var textMeta map[string]interface{}
-	textMetaBytes, err := ioutil.ReadFile("font.json")
+	textMetaBytes, e := ioutil.ReadFile("font.json")
+	if e != nil {
+		panic(e)
+	}
 	json.Unmarshal(textMetaBytes, &textMeta)
 	characters := textMeta["characters"].(map[string]interface{})
 	for ch, props := range characters {
@@ -520,7 +643,8 @@ func newScreenText() *screenText {
 	rgba := image.NewRGBA(img.Bounds())
 	draw.Draw(rgba, rgba.Bounds(), img, image.Pt(0, 0), draw.Src)
 
-	gl.ActiveTexture(gl.TEXTURE0)
+	text.textureUnit = 0
+	gl.ActiveTexture(uint32(gl.TEXTURE0 + text.textureUnit))
 	gl.GenTextures(1, &text.texture)
 	gl.BindTexture(gl.TEXTURE_2D, text.texture)
 
@@ -581,7 +705,7 @@ func (text *screenText) draw(player *person, w *glfw.Window) {
 	text.computeGeometry(framebufferSize(w))
 
 	gl.UseProgram(text.program)
-	gl.Uniform1i(text.textureUniform, int32(text.texture))
+	gl.Uniform1i(text.textureUniform, text.textureUnit)
 	gl.BindVertexArray(text.drawableVAO)
 	gl.DrawArrays(gl.TRIANGLES, 0, 6*int32(text.charCount))
 }

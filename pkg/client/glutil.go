@@ -27,13 +27,29 @@ func createProgram(vertexSource, fragmentSource string) uint32 {
 
 func newVBO() uint32 {
 	var vbo uint32
-	gl.GenBuffers(2, &vbo)
+	gl.GenBuffers(1, &vbo)
 	return vbo
 }
 
 func fillVBO(vbo uint32, data []float32) {
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
 	gl.BufferData(gl.ARRAY_BUFFER, 4*len(data), gl.Ptr(data), gl.STATIC_DRAW)
+}
+
+func newPointsNormalsTcoordsVAO(pointsVBO, normalsVBO, tcoordsVBO uint32) uint32 {
+	var vao uint32
+	gl.GenVertexArrays(1, &vao)
+	gl.BindVertexArray(vao)
+	gl.EnableVertexAttribArray(0)
+	gl.BindBuffer(gl.ARRAY_BUFFER, pointsVBO)
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 0, nil)
+	gl.EnableVertexAttribArray(1)
+	gl.BindBuffer(gl.ARRAY_BUFFER, normalsVBO)
+	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, 0, nil)
+	gl.EnableVertexAttribArray(2)
+	gl.BindBuffer(gl.ARRAY_BUFFER, tcoordsVBO)
+	gl.VertexAttribPointer(2, 2, gl.FLOAT, false, 0, nil)
+	return vao
 }
 
 func newPointsNormalsVAO(pointsVBO, normalsVBO uint32) uint32 {
