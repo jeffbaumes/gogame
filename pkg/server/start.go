@@ -50,6 +50,7 @@ func Start(name string, seed, port int) {
 		err = rows.Scan(&val)
 		checkErr(err)
 		seed, err = strconv.Atoi(val)
+		checkErr(err)
 	} else {
 		stmt, err = db.Prepare("INSERT INTO setting VALUES (\"seed\",?)")
 		checkErr(err)
@@ -58,47 +59,7 @@ func Start(name string, seed, port int) {
 	}
 	rows.Close()
 
-	// var buf bytes.Buffer
-	// enc := gob.NewEncoder(&buf)
-
-	// u := NewUniverse(0)
-	// p := NewPlanet(u, 10.0, 1.0, 85.0, 80, 60, 5)
-
-	// err = enc.Encode(p.planetState)
-	// checkErr(err)
-
-	// stmt, err = db.Prepare("DROP TABLE IF EXISTS temp")
-	// checkErr(err)
-	// _, err = stmt.Exec()
-	// checkErr(err)
-
-	// stmt, err = db.Prepare("CREATE TABLE IF NOT EXISTS temp (data BLOB)")
-	// checkErr(err)
-	// _, err = stmt.Exec()
-	// checkErr(err)
-
-	// stmt, err = db.Prepare("INSERT INTO temp VALUES (?)")
-	// checkErr(err)
-	// _, err = stmt.Exec(buf.Bytes())
-	// checkErr(err)
-
-	// rows, err = db.Query("SELECT data FROM temp")
-	// checkErr(err)
-	// var data []byte
-	// if rows.Next() {
-	// 	err = rows.Scan(&data)
-	// 	checkErr(err)
-	// }
-	// rows.Close()
-
-	// var dbuf bytes.Buffer
-	// dbuf.Write(data)
-	// dec := gob.NewDecoder(&dbuf)
-	// var c planetState
-	// err = dec.Decode(&c)
-	// checkErr(err)
-
-	p = geom.NewPlanet(50.0, 16, 0, nil, db)
+	p = geom.NewPlanet(500.0, 16, seed, nil, db)
 
 	api := new(API)
 	listener, e := net.Listen("tcp", fmt.Sprintf(":%v", port))

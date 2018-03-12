@@ -45,7 +45,7 @@ func Start(username, host string, port int) {
 	cRPC := rpc.NewClient(stream)
 
 	// Create planet
-	planet := geom.NewPlanet(50.0, 16, 0, cRPC, nil)
+	planet := geom.NewPlanet(500.0, 16, 0, cRPC, nil)
 	planetRen := newPlanetRenderer(planet)
 	over := newOverlay()
 	text := newScreenText()
@@ -83,11 +83,11 @@ func Start(username, host string, port int) {
 		if float64(time.Since(syncT))/float64(time.Second) > 0.05 {
 			syncT = time.Now()
 			var ret bool
-			go cRPC.Call("API.UpdatePersonState", &geom.PersonState{
+			cRPC.Go("API.UpdatePersonState", &geom.PersonState{
 				Name:     player.name,
 				Position: player.loc,
 				LookDir:  player.lookDir(),
-			}, &ret)
+			}, &ret, nil)
 		}
 
 		time.Sleep(time.Second/time.Duration(targetFPS) - time.Since(t))

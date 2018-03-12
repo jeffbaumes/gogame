@@ -370,7 +370,6 @@ func newPlanetRenderer(planet *geom.Planet) *planetRenderer {
 	bindAttribute(pr.program, 2, "t")
 	pr.projectionUniform = uniformLocation(pr.program, "proj")
 	pr.textureUniform = uniformLocation(pr.program, "texBase")
-	log.Println(pr.textureUniform)
 
 	existingImageFile, err := os.Open("grass2.png")
 	if err != nil {
@@ -434,7 +433,11 @@ func (planetRen *planetRenderer) draw(player *person, w *glfw.Window) {
 	gl.UniformMatrix4fv(planetRen.projectionUniform, 1, false, &proj[0])
 	gl.Uniform1i(planetRen.textureUniform, planetRen.textureUnit)
 
+	planetRen.planet.ChunksMutex.Lock()
 	for key, chunk := range planetRen.planet.Chunks {
+		if chunk.WaitingForData {
+			continue
+		}
 		cr := planetRen.chunkRenderers[key]
 		if cr == nil {
 			cr = newChunkRenderer(chunk)
@@ -445,6 +448,7 @@ func (planetRen *planetRenderer) draw(player *person, w *glfw.Window) {
 		}
 		cr.draw()
 	}
+	planetRen.planet.ChunksMutex.Unlock()
 }
 
 type chunkRenderer struct {
@@ -602,7 +606,6 @@ func newScreenText() *screenText {
 	bindAttribute(text.program, 0, "coord")
 
 	text.textureUniform = uniformLocation(text.program, "texFont")
-	log.Println(text.textureUniform)
 
 	text.pointsVBO = newVBO()
 	text.drawableVAO = newPointsVAO(text.pointsVBO, 4)

@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/gob"
-	"log"
 	"math"
 	"net/rpc"
+	"sync"
 
 	"github.com/go-gl/mathgl/mgl32"
 	opensimplex "github.com/ojrac/opensimplex-go"
@@ -26,10 +26,11 @@ type PlanetState struct {
 
 // Planet represents all the cells in a spherical planet
 type Planet struct {
-	rpc    *rpc.Client
-	db     *sql.DB
-	Chunks map[ChunkIndex]*Chunk
-	noise  *opensimplex.Noise
+	rpc         *rpc.Client
+	db          *sql.DB
+	Chunks      map[ChunkIndex]*Chunk
+	ChunksMutex *sync.Mutex
+	noise       *opensimplex.Noise
 	PlanetState
 }
 
@@ -47,6 +48,7 @@ func NewPlanet(radius float64, altCells, seed int, crpc *rpc.Client, db *sql.DB)
 	p.Chunks = make(map[ChunkIndex]*Chunk)
 	p.rpc = crpc
 	p.db = db
+	p.ChunksMutex = &sync.Mutex{}
 	return &p
 }
 
@@ -77,7 +79,14 @@ func (p *Planet) GetChunk(ind ChunkIndex) *Chunk {
 	if ind.Alt < 0 || ind.Alt >= p.AltCells/cs {
 		return nil
 	}
+
+	p.ChunksMutex.Lock()
 	chunk := p.Chunks[ind]
+	p.ChunksMutex.Unlock()
+
+	if chunk != nil && chunk.WaitingForData {
+		return nil
+	}
 	if chunk == nil {
 		if p.rpc == nil {
 			if p.db != nil {
@@ -119,18 +128,27 @@ func (p *Planet) GetChunk(ind ChunkIndex) *Chunk {
 						panic(e)
 					}
 				}
+				p.ChunksMutex.Lock()
 				p.Chunks[ind] = chunk
+				p.ChunksMutex.Unlock()
 			} else {
 				chunk = newChunk(ind, p)
+				p.ChunksMutex.Lock()
 				p.Chunks[ind] = chunk
+				p.ChunksMutex.Unlock()
 			}
 		} else {
 			rchunk := Chunk{}
-			e := p.rpc.Call("API.GetChunk", ind, &rchunk)
-			if e != nil {
-				log.Fatal("GetChunk error:", e)
-			}
-			p.Chunks[ind] = &rchunk
+			call := p.rpc.Go("API.GetChunk", ind, &rchunk, nil)
+			go func() {
+				call = <-call.Done
+				p.ChunksMutex.Lock()
+				p.Chunks[ind] = &rchunk
+				p.ChunksMutex.Unlock()
+			}()
+			p.ChunksMutex.Lock()
+			p.Chunks[ind] = &Chunk{WaitingForData: true}
+			p.ChunksMutex.Unlock()
 		}
 	}
 	return chunk
@@ -154,13 +172,10 @@ func (p *Planet) SetCellMaterial(ind CellIndex, material int) bool {
 	cell.Material = material
 	if p.rpc != nil {
 		var ret bool
-		e := p.rpc.Call("API.SetCellMaterial", RPCSetCellMaterialArgs{
+		p.rpc.Go("API.SetCellMaterial", RPCSetCellMaterialArgs{
 			Index:    ind,
 			Material: material,
-		}, &ret)
-		if e != nil {
-			log.Fatal("SetCellMaterial error:", e)
-		}
+		}, &ret, nil)
 	}
 	if p.db != nil {
 		chunkInd := p.CellIndexToChunkIndex(ind)
@@ -325,7 +340,8 @@ func (p *Planet) CellLocToSpherical(l CellLoc) (r, theta, phi float32) {
 
 // Chunk is a 3D block of planet cells
 type Chunk struct {
-	Cells [][][]*Cell
+	WaitingForData bool
+	Cells          [][][]*Cell
 }
 
 func newChunk(ind ChunkIndex, p *Planet) *Chunk {
