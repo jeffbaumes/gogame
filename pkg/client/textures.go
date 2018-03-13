@@ -5,11 +5,10 @@ import (
 	"image"
 	"image/draw"
 	"image/png"
-	"log"
 	"os"
 )
 
-func LoadTextures() {
+func LoadTextures() *image.RGBA {
 	files := []string{
 		"grass-side",
 		"grass-top",
@@ -34,20 +33,7 @@ func LoadTextures() {
 		sy := (x / 4) * 16
 		draw.Draw(rgba, image.Rect(sx, sy, sx+16, sy+16), img, image.Pt(0, 0), draw.Src)
 		ImageFile.Close()
+	}
+	return rgba
 
-	}
-	f, err := os.Create("textures.png")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if err := png.Encode(f, rgba); err != nil {
-		f.Close()
-		log.Fatal(err)
-	}
-
-	if err := f.Close(); err != nil {
-		log.Fatal(err)
-	}
-	// log.Println(rgba)
 }
