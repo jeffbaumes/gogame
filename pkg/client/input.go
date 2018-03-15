@@ -71,6 +71,9 @@ func keyCallback(player *person) func(w *glfw.Window, key glfw.Key, scancode int
 				if player.gameMode >= numGameModes {
 					player.gameMode = 0
 				}
+				if player.gameMode == flying {
+					player.fallVel = 0
+				}
 			case glfw.KeyEscape:
 				w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 			}

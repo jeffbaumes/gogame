@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"math"
 	"net"
 	"net/rpc"
 	"runtime"
@@ -45,7 +46,7 @@ func Start(username, host string, port int) {
 	cRPC := rpc.NewClient(stream)
 
 	// Create planet
-	planet := geom.NewPlanet(500.0, 16, 0, cRPC, nil)
+	planet := geom.NewPlanet(50.0, 16, 0, cRPC, nil)
 	planetRen := newPlanetRenderer(planet)
 	over := newOverlay()
 	text := newScreenText()
@@ -68,13 +69,18 @@ func Start(username, host string, port int) {
 	window.SetSizeCallback(windowSizeCallback)
 	window.SetMouseButtonCallback(mouseButtonCallback(player, planetRen))
 
-	t := time.Now()
+	startTime := time.Now()
+	t := startTime
 	syncT := t
 	for !window.ShouldClose() {
 		h := float32(time.Since(t)) / float32(time.Second)
 		t = time.Now()
 
-		drawFrame(h, player, text, over, planetRen, peopleRen, window)
+		elapsedSeconds := float64(time.Since(startTime)) / float64(time.Second)
+		secondsPerDay := 30.0
+		_, timeOfDay := math.Modf(elapsedSeconds / secondsPerDay)
+
+		drawFrame(h, player, text, over, planetRen, peopleRen, window, timeOfDay)
 
 		if cursorGrabbed(window) {
 			player.updatePosition(h, planet)

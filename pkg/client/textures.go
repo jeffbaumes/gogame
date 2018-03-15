@@ -8,6 +8,7 @@ import (
 	"os"
 )
 
+// LoadTextures loads textures from the textures directory into a single texture image
 func LoadTextures() *image.RGBA {
 	files := []string{
 		"grass-side",
@@ -28,7 +29,6 @@ func LoadTextures() *image.RGBA {
 		if err != nil {
 			panic(err)
 		}
-		// draw.Draw(dst, r, src, sp, op)
 		sx := (x % 4) * 16
 		sy := (x / 4) * 16
 		draw.Draw(rgba, image.Rect(sx, sy, sx+16, sy+16), img, image.Pt(0, 0), draw.Src)

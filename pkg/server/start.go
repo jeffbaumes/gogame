@@ -59,7 +59,7 @@ func Start(name string, seed, port int) {
 	}
 	rows.Close()
 
-	p = geom.NewPlanet(500.0, 16, seed, nil, db)
+	p = geom.NewPlanet(50.0, 16, seed, nil, db)
 
 	api := new(API)
 	listener, e := net.Listen("tcp", fmt.Sprintf(":%v", port))

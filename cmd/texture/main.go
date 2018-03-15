@@ -23,5 +23,4 @@ func main() {
 	if err := f.Close(); err != nil {
 		log.Fatal(err)
 	}
-	// log.Println(rgba)
 }

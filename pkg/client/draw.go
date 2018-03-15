@@ -19,12 +19,12 @@ import (
 
 var (
 	squareTcoords = []float32{
-		0, 1,
 		0, 0,
+		0, 1,
 		1, 0,
 
-		0, 1,
 		1, 0,
+		0, 1,
 		1, 1,
 
 		0, 1,
@@ -35,12 +35,12 @@ var (
 		1, 0,
 		1, 1,
 
-		0, 1,
 		0, 0,
+		0, 1,
 		1, 0,
 
-		0, 1,
 		1, 0,
+		0, 1,
 		1, 1,
 
 		0, 1,
@@ -51,12 +51,12 @@ var (
 		1, 0,
 		1, 1,
 
-		0, 1,
 		0, 0,
+		0, 1,
 		1, 0,
 
-		0, 1,
 		1, 0,
+		0, 1,
 		1, 1,
 
 		0, 1,
@@ -69,12 +69,12 @@ var (
 	}
 
 	square = []float32{
-		-0.5, 0.5, 0.5,
 		-0.5, -0.5, 0.5,
+		-0.5, 0.5, 0.5,
 		0.5, -0.5, 0.5,
 
-		-0.5, 0.5, 0.5,
 		0.5, -0.5, 0.5,
+		-0.5, 0.5, 0.5,
 		0.5, 0.5, 0.5,
 
 		-0.5, 0.5, -0.5,
@@ -85,12 +85,12 @@ var (
 		0.5, -0.5, -0.5,
 		0.5, 0.5, -0.5,
 
-		0.5, -0.5, 0.5,
 		0.5, -0.5, -0.5,
+		0.5, -0.5, 0.5,
 		0.5, 0.5, -0.5,
 
-		0.5, -0.5, 0.5,
 		0.5, 0.5, -0.5,
+		0.5, -0.5, 0.5,
 		0.5, 0.5, 0.5,
 
 		-0.5, -0.5, 0.5,
@@ -101,12 +101,12 @@ var (
 		-0.5, 0.5, -0.5,
 		-0.5, 0.5, 0.5,
 
-		0.5, 0.5, -0.5,
 		-0.5, 0.5, -0.5,
+		0.5, 0.5, -0.5,
 		-0.5, 0.5, 0.5,
 
-		0.5, 0.5, -0.5,
 		-0.5, 0.5, 0.5,
+		0.5, 0.5, -0.5,
 		0.5, 0.5, 0.5,
 
 		0.5, -0.5, -0.5,
@@ -126,6 +126,7 @@ const (
 		in vec3 n;
 		in vec2 t;
 		uniform mat4 proj;
+		uniform vec3 sundir;
 		out vec3 color;
 		out vec3 light;
 		out vec2 texcoord;
@@ -135,14 +136,15 @@ const (
 			gl_Position = proj * vec4(vp, 1.0);
 
 			// Apply lighting effect
-			highp vec3 ambientLight = vec3(0.5, 0.5, 0.5);
-			highp vec3 light1Color = vec3(0.3, 0.3, 0.3);
-			highp vec3 light1Dir = normalize(vec3(0.85, 0.8, 0.75));
-			highp float light1 = max(dot(n, light1Dir), 0.0);
+			highp vec3 ambientLight = vec3(0, 0, 0);
+			highp vec3 vpn = normalize(vp);
+			highp vec3 light1Color = vec3(0.9, 0.9, 0.9);
+			highp float light1 = max(sqrt(dot(vpn, sundir)), 0.0);
 			highp vec3 light2Color = vec3(0.2, 0.2, 0.2);
-			highp vec3 light2Dir = normalize(vec3(-0.85, -0.8, -0.75));
-			highp float light2 = max(dot(n, light2Dir), 0.0);
-			light = ambientLight + (light1Color * light1) + (light2Color * light2);
+			highp float light2 = max(sqrt(1 - dot(vpn, sundir)), 0.0);
+			highp vec3 light3Color = vec3(1.0, 0.5, 0.1);
+			highp float light3 = max(0.4 - sqrt(abs(dot(vpn, sundir))), 0.0);
+			light = ambientLight + (light1Color * light1) + (light2Color * light2) + (light3Color * light3);
 		}
 	`
 
@@ -158,6 +160,7 @@ const (
 			// frag_color = vec4(1,1,1,1);
 			// frag_color = vec4(light, 1.0);
 			frag_color = texel * vec4(light, 1.0);
+			// frag_color = vec4(light, 1.0);
 		}
 	`
 
@@ -272,10 +275,32 @@ func initOpenGL() {
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 }
 
-func drawFrame(h float32, player *person, text *screenText, over *overlay, planetRen *planetRenderer, peopleRen *peopleRenderer, window *glfw.Window) {
+func drawFrame(h float32, player *person, text *screenText, over *overlay, planetRen *planetRenderer, peopleRen *peopleRenderer, window *glfw.Window, timeOfDay float64) {
+	sunAngle := timeOfDay * math.Pi * 2
+	sunDir := mgl32.Vec3{float32(math.Sin(sunAngle)), float32(math.Cos(sunAngle)), 0}
+	vpnDotSun := float64(player.loc.Normalize().Dot(sunDir))
+	light1Color := mgl32.Vec3{0.5, 0.7, 1.0}
+	light1 := math.Max(math.Sqrt(vpnDotSun), 0)
+	if math.IsNaN(light1) {
+		light1 = 0
+	}
+	light2Color := mgl32.Vec3{0, 0, 0}
+	light2 := math.Max(math.Sqrt(1-vpnDotSun), 0)
+	if math.IsNaN(light2) {
+		light2 = 0
+	}
+	light3Color := mgl32.Vec3{0.7, 0.5, 0.4}
+	light3 := math.Max(0.6-math.Sqrt(math.Abs(vpnDotSun)), 0)
+	if math.IsNaN(light3) {
+		light3 = 0
+	}
+	light := light1Color.Mul(float32(light1)).Add(light2Color.Mul(float32(light2))).Add(light3Color.Mul(float32(light3)))
+
+	gl.ClearColor(light.X(), light.Y(), light.Z(), 1)
+	planetRen.planet.CartesianToCellIndex(player.loc)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-	planetRen.draw(player, window)
+	planetRen.draw(player, window, timeOfDay)
 	peopleRen.draw(player, window)
 	over.draw(window)
 	text.draw(player, window)
@@ -358,6 +383,7 @@ type planetRenderer struct {
 	textureUnit       int32
 	textureUniform    int32
 	projectionUniform int32
+	sunDirUniform     int32
 }
 
 func newPlanetRenderer(planet *geom.Planet) *planetRenderer {
@@ -369,9 +395,10 @@ func newPlanetRenderer(planet *geom.Planet) *planetRenderer {
 	bindAttribute(pr.program, 1, "n")
 	bindAttribute(pr.program, 2, "t")
 	pr.projectionUniform = uniformLocation(pr.program, "proj")
+	pr.sunDirUniform = uniformLocation(pr.program, "sundir")
 	pr.textureUniform = uniformLocation(pr.program, "texBase")
 
-	existingImageFile, err := os.Open("grass2.png")
+	existingImageFile, err := os.Open("textures.png")
 	if err != nil {
 		panic(err)
 	}
@@ -382,7 +409,6 @@ func newPlanetRenderer(planet *geom.Planet) *planetRenderer {
 	}
 	rgba := image.NewRGBA(img.Bounds())
 	draw.Draw(rgba, rgba.Bounds(), img, image.Pt(0, 0), draw.Src)
-	// log.Println(rgba)
 
 	pr.textureUnit = 1
 	gl.ActiveTexture(uint32(gl.TEXTURE0 + pr.textureUnit))
@@ -405,8 +431,6 @@ func newPlanetRenderer(planet *geom.Planet) *planetRenderer {
 		gl.UNSIGNED_BYTE,
 		gl.Ptr(rgba.Pix),
 	)
-	// log.Println(rgba.Pix)
-	// log.Println(rgba.Rect)
 
 	gl.GenerateMipmap(gl.TEXTURE_2D)
 
@@ -423,7 +447,7 @@ func (planetRen *planetRenderer) setCellMaterial(ind geom.CellIndex, material in
 	chunkRen.geometryUpdated = false
 }
 
-func (planetRen *planetRenderer) draw(player *person, w *glfw.Window) {
+func (planetRen *planetRenderer) draw(player *person, w *glfw.Window, timeOfDay float64) {
 	gl.UseProgram(planetRen.program)
 	lookDir := player.lookDir()
 	view := mgl32.LookAtV(player.loc, player.loc.Add(lookDir), player.loc.Normalize())
@@ -432,6 +456,8 @@ func (planetRen *planetRenderer) draw(player *person, w *glfw.Window) {
 	proj := perspective.Mul4(view)
 	gl.UniformMatrix4fv(planetRen.projectionUniform, 1, false, &proj[0])
 	gl.Uniform1i(planetRen.textureUniform, planetRen.textureUnit)
+	sunAngle := timeOfDay * math.Pi * 2
+	gl.Uniform3f(planetRen.sunDirUniform, float32(math.Sin(sunAngle)), float32(math.Cos(sunAngle)), 0)
 
 	planetRen.planet.ChunksMutex.Lock()
 	for key, chunk := range planetRen.planet.Chunks {
@@ -480,13 +506,18 @@ func (cr *chunkRenderer) updateGeometry(planet *geom.Planet, lonIndex, latIndex,
 	for cLon := 0; cLon < cs; cLon++ {
 		for cLat := 0; cLat < cs; cLat++ {
 			for cAlt := 0; cAlt < cs; cAlt++ {
+				cellIndex := geom.CellIndex{
+					Lon: cs*lonIndex + cLon,
+					Lat: cs*latIndex + cLat,
+					Alt: cs*altIndex + cAlt,
+				}
 				if cr.chunk.Cells[cLon][cLat][cAlt].Material != geom.Air {
 					pts := make([]float32, len(square))
 					for i := 0; i < len(square); i += 3 {
 						l := geom.CellLoc{
-							Lon: float32(cs*lonIndex+cLon) + square[i+0],
-							Lat: float32(cs*latIndex+cLat) + square[i+1],
-							Alt: float32(cs*altIndex+cAlt) + square[i+2],
+							Lon: float32(cellIndex.Lon) + square[i+0],
+							Lat: float32(cellIndex.Lat) + square[i+1],
+							Alt: float32(cellIndex.Alt) + square[i+2],
 						}
 						r, theta, phi := planet.CellLocToSpherical(l)
 						cart := mgl32.SphericalToCartesian(r, theta, phi)
@@ -512,14 +543,14 @@ func (cr *chunkRenderer) updateGeometry(planet *geom.Planet, lonIndex, latIndex,
 					}
 					normals = append(normals, nms...)
 
-					// tcs := make([]float32, len(square)/3*2)
-					// for i := 0; i < len(square)/3*2; i += 2 {
-					// 	// tcs[i+0] = float32((i / 2) % 2)
-					// 	// tcs[i+1] = float32(1 - ((i / 2) % 2))
-					// 	tcs[i+0] = 0.5
-					// 	tcs[i+1] = 0.5
-					// }
-					tcoords = append(tcoords, squareTcoords...)
+					tcs := make([]float32, len(squareTcoords))
+					for i := 0; i < len(squareTcoords); i += 2 {
+						material := 5
+						// material := (cLat + cLon) % 7
+						tcs[i+0] = (squareTcoords[i+0] + float32(material%4)) / 4
+						tcs[i+1] = (squareTcoords[i+1] + float32(material/4)) / 4
+					}
+					tcoords = append(tcoords, tcs...)
 				}
 			}
 		}
