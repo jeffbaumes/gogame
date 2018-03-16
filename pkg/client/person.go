@@ -14,23 +14,25 @@ const (
 )
 
 type person struct {
-	upVel        float32
-	downVel      float32
-	forwardVel   float32
-	backVel      float32
-	rightVel     float32
-	leftVel      float32
-	walkVel      float32
-	fallVel      float32
-	loc          mgl32.Vec3
-	lookHeading  mgl32.Vec3
-	lookAltitude float64
-	height       float64
-	radius       float64
-	gameMode     int
-	holdingJump  bool
-	inJump       bool
-	name         string
+	upVel           float32
+	downVel         float32
+	forwardVel      float32
+	backVel         float32
+	rightVel        float32
+	leftVel         float32
+	walkVel         float32
+	fallVel         float32
+	loc             mgl32.Vec3
+	lookHeading     mgl32.Vec3
+	lookAltitude    float64
+	height          float64
+	radius          float64
+	gameMode        int
+	holdingJump     bool
+	inJump          bool
+	name            string
+	currentMaterial int
+	focusCellIndex  geom.CellIndex
 }
 
 func newPerson(name string) *person {
@@ -42,6 +44,7 @@ func newPerson(name string) *person {
 	p.radius = 0.25
 	p.gameMode = normal
 	p.name = name
+	p.currentMaterial = geom.Grass
 	return &p
 }
 
@@ -107,6 +110,20 @@ func (player *person) updatePosition(h float32, planet *geom.Planet) {
 		player.loc = player.loc.Add(up.Mul((player.upVel - player.downVel) * h))
 		player.loc = player.loc.Add(lookDir.Mul((player.forwardVel - player.backVel) * h))
 		player.loc = player.loc.Add(right.Mul((player.rightVel - player.leftVel) * h))
+	}
+
+	// Update focused cell
+	increment := player.lookDir().Mul(0.05)
+	pos := player.loc
+	player.focusCellIndex = geom.CellIndex{Lat: 0, Lon: 0, Alt: 0}
+	for i := 0; i < 100; i++ {
+		pos = pos.Add(increment)
+		cell := planet.CartesianToCell(pos)
+		if cell != nil && cell.Material != geom.Air {
+			cellIndex := planet.CartesianToCellIndex(pos)
+			player.focusCellIndex = cellIndex
+			break
+		}
 	}
 }
 

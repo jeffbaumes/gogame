@@ -58,6 +58,18 @@ func keyCallback(player *person) func(w *glfw.Window, key glfw.Key, scancode int
 				if player.gameMode == flying {
 					player.downVel = player.walkVel
 				}
+			case glfw.Key1:
+				player.currentMaterial = 1
+			case glfw.Key2:
+				player.currentMaterial = 2
+			case glfw.Key3:
+				player.currentMaterial = 3
+			case glfw.Key4:
+				player.currentMaterial = 4
+			case glfw.Key5:
+				player.currentMaterial = 5
+			case glfw.Key6:
+				player.currentMaterial = 6
 			case glfw.KeyW:
 				player.forwardVel = player.walkVel
 			case glfw.KeyS:
@@ -132,7 +144,7 @@ func mouseButtonCallback(player *person, planetRen *planetRenderer) func(w *glfw
 						cell := planet.CellIndexToCell(cellIndex)
 						if cell != nil && cell.Material != geom.Air {
 							if prevCellIndex.Lon != -1 {
-								planetRen.setCellMaterial(prevCellIndex, geom.Rock)
+								planetRen.setCellMaterial(prevCellIndex, player.currentMaterial)
 							}
 							break
 						}

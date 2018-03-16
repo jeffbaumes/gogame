@@ -117,6 +117,35 @@ var (
 		-0.5, -0.5, 0.5,
 		0.5, -0.5, 0.5,
 	}
+
+	box = []float32{
+		-0.5, -0.5, 0.5,
+		-0.5, 0.5, 0.5,
+		-0.5, 0.5, 0.5,
+		-0.5, -0.5, 0.5,
+		-0.5, -0.5, 0.5,
+		0.5, -0.5, 0.5,
+		0.5, -0.5, 0.5,
+		-0.5, -0.5, 0.5,
+
+		-0.5, -0.5, -0.5,
+		-0.5, 0.5, -0.5,
+		-0.5, 0.5, -0.5,
+		-0.5, -0.5, -0.5,
+		-0.5, -0.5, -0.5,
+		0.5, -0.5, -0.5,
+		0.5, -0.5, -0.5,
+		-0.5, -0.5, -0.5,
+
+		0.5, 0.5, 0.5,
+		0.5, 0.5, -0.5,
+		0.5, -0.5, 0.5,
+		0.5, -0.5, -0.5,
+		-0.5, 0.5, 0.5,
+		-0.5, 0.5, -0.5,
+		-0.5, -0.5, 0.5,
+		-0.5, -0.5, -0.5,
+	}
 )
 
 const (
@@ -241,6 +270,23 @@ const (
 			frag_color = texel;
 		}
 	`
+
+	vertexShaderSourceFocus = `
+		#version 410
+		in vec3 position;
+		uniform mat4 proj;
+		void main() {
+			gl_Position = proj * vec4(position, 1.0);
+		}
+	`
+
+	fragmentShaderSourceFocus = `
+		#version 410
+		out vec4 frag_color;
+		void main() {
+			frag_color = vec4(0,0,0,1);
+		}
+	`
 )
 
 func initGlfw() *glfw.Window {
@@ -269,13 +315,17 @@ func initOpenGL() {
 	log.Println("OpenGL version", version)
 
 	gl.Enable(gl.DEPTH_TEST)
-	// gl.Enable(gl.POLYGON_OFFSET_FILL)
-	// gl.PolygonOffset(2, 0)
+	gl.Enable(gl.POLYGON_OFFSET_FILL)
+	gl.PolygonOffset(2, 0)
+
+	gl.LineWidth(100)
+	gl.Enable(gl.LINE_SMOOTH)
+
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 }
 
-func drawFrame(h float32, player *person, text *screenText, over *overlay, planetRen *planetRenderer, peopleRen *peopleRenderer, window *glfw.Window, timeOfDay float64) {
+func drawFrame(h float32, player *person, text *screenText, over *overlay, planetRen *planetRenderer, peopleRen *peopleRenderer, focusRen *focusRenderer, window *glfw.Window, timeOfDay float64) {
 	sunAngle := timeOfDay * math.Pi * 2
 	sunDir := mgl32.Vec3{float32(math.Sin(sunAngle)), float32(math.Cos(sunAngle)), 0}
 	vpnDotSun := float64(player.loc.Normalize().Dot(sunDir))
@@ -302,6 +352,7 @@ func drawFrame(h float32, player *person, text *screenText, over *overlay, plane
 
 	planetRen.draw(player, window, timeOfDay)
 	peopleRen.draw(player, window)
+	focusRen.draw(player, planetRen.planet, window)
 	over.draw(window)
 	text.draw(player, window)
 
@@ -511,7 +562,8 @@ func (cr *chunkRenderer) updateGeometry(planet *geom.Planet, lonIndex, latIndex,
 					Lat: cs*latIndex + cLat,
 					Alt: cs*altIndex + cAlt,
 				}
-				if cr.chunk.Cells[cLon][cLat][cAlt].Material != geom.Air {
+				cell := cr.chunk.Cells[cLon][cLat][cAlt]
+				if cell.Material != geom.Air {
 					pts := make([]float32, len(square))
 					for i := 0; i < len(square); i += 3 {
 						l := geom.CellLoc{
@@ -545,7 +597,7 @@ func (cr *chunkRenderer) updateGeometry(planet *geom.Planet, lonIndex, latIndex,
 
 					tcs := make([]float32, len(squareTcoords))
 					for i := 0; i < len(squareTcoords); i += 2 {
-						material := 5
+						material := cell.Material
 						// material := (cLat + cLon) % 7
 						tcs[i+0] = (squareTcoords[i+0] + float32(material%4)) / 4
 						tcs[i+1] = (squareTcoords[i+1] + float32(material/4)) / 4
@@ -742,4 +794,50 @@ func (text *screenText) draw(player *person, w *glfw.Window) {
 	gl.Uniform1i(text.textureUniform, text.textureUnit)
 	gl.BindVertexArray(text.drawableVAO)
 	gl.DrawArrays(gl.TRIANGLES, 0, 6*int32(text.charCount))
+}
+
+type focusRenderer struct {
+	program           uint32
+	drawableVAO       uint32
+	pointsVBO         uint32
+	projectionUniform int32
+}
+
+func newFocusRenderer() *focusRenderer {
+	focusRen := focusRenderer{}
+	focusRen.program = createProgram(vertexShaderSourceFocus, fragmentShaderSourceFocus)
+	bindAttribute(focusRen.program, 0, "position")
+	focusRen.projectionUniform = uniformLocation(focusRen.program, "proj")
+	focusRen.pointsVBO = newVBO()
+	fillVBO(focusRen.pointsVBO, square)
+	focusRen.drawableVAO = newPointsVAO(focusRen.pointsVBO, 3)
+	return &focusRen
+}
+
+func (focusRen *focusRenderer) draw(player *person, planet *geom.Planet, w *glfw.Window) {
+	gl.UseProgram(focusRen.program)
+	pts := make([]float32, len(box))
+	for i := 0; i < len(box); i += 3 {
+		ind := geom.CellLoc{
+			Lon: float32(player.focusCellIndex.Lon) + box[i+0],
+			Lat: float32(player.focusCellIndex.Lat) + box[i+1],
+			Alt: float32(player.focusCellIndex.Alt) + box[i+2],
+		}
+		pt := planet.CellLocToCartesian(ind)
+		pts[i+0] = pt.X()
+		pts[i+1] = pt.Y()
+		pts[i+2] = pt.Z()
+	}
+
+	fillVBO(focusRen.pointsVBO, pts)
+
+	lookDir := player.lookDir()
+	view := mgl32.LookAtV(player.loc, player.loc.Add(lookDir), player.loc.Normalize())
+	width, height := framebufferSize(w)
+	perspective := mgl32.Perspective(45, float32(width)/float32(height), 0.01, 1000)
+	proj := perspective.Mul4(view)
+	gl.UniformMatrix4fv(focusRen.projectionUniform, 1, false, &proj[0])
+
+	gl.BindVertexArray(focusRen.drawableVAO)
+	gl.DrawArrays(gl.LINES, 0, int32(len(box)/3))
 }

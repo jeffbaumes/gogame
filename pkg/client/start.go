@@ -62,6 +62,7 @@ func Start(username, host string, port int) {
 	go s.ServeConn(smuxConn)
 
 	peopleRen := newPeopleRenderer(clientAPI)
+	focusRen := newFocusRenderer()
 
 	window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
 	window.SetKeyCallback(keyCallback(player))
@@ -80,7 +81,7 @@ func Start(username, host string, port int) {
 		secondsPerDay := 30.0
 		_, timeOfDay := math.Modf(elapsedSeconds / secondsPerDay)
 
-		drawFrame(h, player, text, over, planetRen, peopleRen, window, timeOfDay)
+		drawFrame(h, player, text, over, planetRen, peopleRen, focusRen, window, timeOfDay)
 
 		if cursorGrabbed(window) {
 			player.updatePosition(h, planet)

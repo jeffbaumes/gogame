@@ -361,7 +361,7 @@ func newChunk(ind ChunkIndex, p *Planet) *Chunk {
 				const scale = 0.1
 				height := (p.noise.Eval3(float64(pos[0])*scale, float64(pos[1])*scale, float64(pos[2])*scale) + 1.0) * float64(p.AltCells) / 4.0
 				if float64(altIndex) <= height {
-					c.Material = Rock
+					c.Material = Stone
 				} else {
 					c.Material = Air
 				}
@@ -377,9 +377,22 @@ type Cell struct {
 	Material int
 }
 
-// Air is a transparent, empty material
-// Rock is an opaque, solid material
 const (
-	Air  = iota
-	Rock = iota
+	Air      = 0
+	Grass    = 1
+	Stone    = 2
+	Moon     = 3
+	Sun      = 4
+	Asteroid = 5
+)
+
+var (
+	Materials []string = []string{
+		"air",
+		"grass",
+		"stone",
+		"moon",
+		"sun",
+		"asteroid",
+	}
 )
