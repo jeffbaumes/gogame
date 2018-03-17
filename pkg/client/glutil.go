@@ -8,12 +8,12 @@ import (
 )
 
 func createProgram(vertexSource, fragmentSource string) uint32 {
-	vertexShader, err := compileShader(vertexSource+"\x00", gl.VERTEX_SHADER)
+	vertexShader, err := compileShader(vertexSource, gl.VERTEX_SHADER)
 	if err != nil {
 		panic(err)
 	}
 
-	fragmentShader, err := compileShader(fragmentSource+"\x00", gl.FRAGMENT_SHADER)
+	fragmentShader, err := compileShader(fragmentSource, gl.FRAGMENT_SHADER)
 	if err != nil {
 		panic(err)
 	}
@@ -76,7 +76,7 @@ func newPointsVAO(pointsVBO uint32, size int32) uint32 {
 }
 
 func bindAttribute(prog, location uint32, name string) {
-	s, free := gl.Strs(name)
+	s, free := gl.Strs(name + "\x00")
 	gl.BindAttribLocation(prog, location, *s)
 	free()
 }
@@ -84,7 +84,7 @@ func bindAttribute(prog, location uint32, name string) {
 func compileShader(source string, shaderType uint32) (uint32, error) {
 	shader := gl.CreateShader(shaderType)
 
-	csources, free := gl.Strs(source)
+	csources, free := gl.Strs(source + "\x00")
 	gl.ShaderSource(shader, 1, csources, nil)
 	free()
 	gl.CompileShader(shader)
@@ -104,9 +104,9 @@ func compileShader(source string, shaderType uint32) (uint32, error) {
 	return shader, nil
 }
 
-// UniformLocation retrieves a uniform location by name
+// uniformLocation retrieves a uniform location by name
 func uniformLocation(program uint32, name string) int32 {
-	glstr, free := gl.Strs(name)
+	glstr, free := gl.Strs(name + "\x00")
 	uniform := gl.GetUniformLocation(program, *glstr)
 	free()
 	return uniform

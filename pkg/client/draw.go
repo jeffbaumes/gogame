@@ -118,33 +118,163 @@ var (
 		0.5, -0.5, 0.5,
 	}
 
-	box = []float32{
-		-0.5, -0.5, 0.5,
+	lw  float32 = 0.5
+	box         = []float32{
+		0.5, 0.5, 0.5,
 		-0.5, 0.5, 0.5,
+		0.5, 0.5 - lw, 0.5,
+		0.5, 0.5 - lw, 0.5,
 		-0.5, 0.5, 0.5,
-		-0.5, -0.5, 0.5,
-		-0.5, -0.5, 0.5,
-		0.5, -0.5, 0.5,
-		0.5, -0.5, 0.5,
-		-0.5, -0.5, 0.5,
+		-0.5, 0.5 - lw, 0.5,
+		0.5, 0.5, 0.5,
+		-0.5, 0.5, 0.5,
+		0.5, 0.5, 0.5 - lw,
+		0.5, 0.5, 0.5 - lw,
+		-0.5, 0.5, 0.5,
+		-0.5, 0.5, 0.5 - lw,
 
-		-0.5, -0.5, -0.5,
+		0.5, 0.5, -0.5,
 		-0.5, 0.5, -0.5,
+		0.5, 0.5 - lw, -0.5,
+		0.5, 0.5 - lw, -0.5,
+		-0.5, 0.5, -0.5,
+		-0.5, 0.5 - lw, -0.5,
+		0.5, 0.5, -0.5,
+		-0.5, 0.5, -0.5,
+		0.5, 0.5, -0.5 + lw,
+		0.5, 0.5, -0.5 + lw,
+		-0.5, 0.5, -0.5,
+		-0.5, 0.5, -0.5 + lw,
+
+		0.5, -0.5, 0.5,
+		-0.5, -0.5, 0.5,
+		0.5, -0.5 + lw, 0.5,
+		0.5, -0.5 + lw, 0.5,
+		-0.5, -0.5, 0.5,
+		-0.5, -0.5 + lw, 0.5,
+		0.5, -0.5, 0.5,
+		-0.5, -0.5, 0.5,
+		0.5, -0.5, 0.5 - lw,
+		0.5, -0.5, 0.5 - lw,
+		-0.5, -0.5, 0.5,
+		-0.5, -0.5, 0.5 - lw,
+
+		0.5, -0.5, -0.5,
+		-0.5, -0.5, -0.5,
+		0.5, -0.5 + lw, -0.5,
+		0.5, -0.5 + lw, -0.5,
+		-0.5, -0.5, -0.5,
+		-0.5, -0.5 + lw, -0.5,
+		0.5, -0.5, -0.5,
+		-0.5, -0.5, -0.5,
+		0.5, -0.5, -0.5 + lw,
+		0.5, -0.5, -0.5 + lw,
+		-0.5, -0.5, -0.5,
+		-0.5, -0.5, -0.5 + lw,
+
+		0.5, 0.5, 0.5,
+		0.5, -0.5, 0.5,
+		0.5, 0.5, 0.5 - lw,
+		0.5, 0.5, 0.5 - lw,
+		0.5, -0.5, 0.5,
+		0.5, -0.5, 0.5 - lw,
+		0.5, 0.5, 0.5,
+		0.5, -0.5, 0.5,
+		0.5 - lw, 0.5, 0.5,
+		0.5 - lw, 0.5, 0.5,
+		0.5, -0.5, 0.5,
+		0.5 - lw, -0.5, 0.5,
+
+		-0.5, 0.5, 0.5,
+		-0.5, -0.5, 0.5,
+		-0.5, 0.5, 0.5 - lw,
+		-0.5, 0.5, 0.5 - lw,
+		-0.5, -0.5, 0.5,
+		-0.5, -0.5, 0.5 - lw,
+		-0.5, 0.5, 0.5,
+		-0.5, -0.5, 0.5,
+		-0.5 + lw, 0.5, 0.5,
+		-0.5 + lw, 0.5, 0.5,
+		-0.5, -0.5, 0.5,
+		-0.5 + lw, -0.5, 0.5,
+
+		0.5, 0.5, -0.5,
+		0.5, -0.5, -0.5,
+		0.5, 0.5, -0.5 + lw,
+		0.5, 0.5, -0.5 + lw,
+		0.5, -0.5, -0.5,
+		0.5, -0.5, -0.5 + lw,
+		0.5, 0.5, -0.5,
+		0.5, -0.5, -0.5,
+		0.5 - lw, 0.5, -0.5,
+		0.5 - lw, 0.5, -0.5,
+		0.5, -0.5, -0.5,
+		0.5 - lw, -0.5, -0.5,
+
 		-0.5, 0.5, -0.5,
 		-0.5, -0.5, -0.5,
+		-0.5, 0.5, -0.5 + lw,
+		-0.5, 0.5, -0.5 + lw,
 		-0.5, -0.5, -0.5,
-		0.5, -0.5, -0.5,
-		0.5, -0.5, -0.5,
+		-0.5, -0.5, -0.5 + lw,
+		-0.5, 0.5, -0.5,
 		-0.5, -0.5, -0.5,
+		-0.5 + lw, 0.5, -0.5,
+		-0.5 + lw, 0.5, -0.5,
+		-0.5, -0.5, -0.5,
+		-0.5 + lw, -0.5, -0.5,
 
 		0.5, 0.5, 0.5,
 		0.5, 0.5, -0.5,
-		0.5, -0.5, 0.5,
-		0.5, -0.5, -0.5,
+		0.5 - lw, 0.5, 0.5,
+		0.5 - lw, 0.5, 0.5,
+		0.5, 0.5, -0.5,
+		0.5 - lw, 0.5, -0.5,
+		0.5, 0.5, 0.5,
+		0.5, 0.5, -0.5,
+		0.5, 0.5 - lw, 0.5,
+		0.5, 0.5 - lw, 0.5,
+		0.5, 0.5, -0.5,
+		0.5, 0.5 - lw, -0.5,
+
 		-0.5, 0.5, 0.5,
 		-0.5, 0.5, -0.5,
+		-0.5 + lw, 0.5, 0.5,
+		-0.5 + lw, 0.5, 0.5,
+		-0.5, 0.5, -0.5,
+		-0.5 + lw, 0.5, -0.5,
+		-0.5, 0.5, 0.5,
+		-0.5, 0.5, -0.5,
+		-0.5, 0.5 - lw, 0.5,
+		-0.5, 0.5 - lw, 0.5,
+		-0.5, 0.5, -0.5,
+		-0.5, 0.5 - lw, -0.5,
+
+		0.5, -0.5, 0.5,
+		0.5, -0.5, -0.5,
+		0.5 - lw, -0.5, 0.5,
+		0.5 - lw, -0.5, 0.5,
+		0.5, -0.5, -0.5,
+		0.5 - lw, -0.5, -0.5,
+		0.5, -0.5, 0.5,
+		0.5, -0.5, -0.5,
+		0.5, -0.5 + lw, 0.5,
+		0.5, -0.5 + lw, 0.5,
+		0.5, -0.5, -0.5,
+		0.5, -0.5 + lw, -0.5,
+
 		-0.5, -0.5, 0.5,
 		-0.5, -0.5, -0.5,
+		-0.5 + lw, -0.5, 0.5,
+		-0.5 + lw, -0.5, 0.5,
+		-0.5, -0.5, -0.5,
+		-0.5 + lw, -0.5, -0.5,
+		-0.5, -0.5, 0.5,
+		-0.5, -0.5, -0.5,
+		-0.5, -0.5 + lw, 0.5,
+		-0.5, -0.5 + lw, 0.5,
+		-0.5, -0.5, -0.5,
+		-0.5, -0.5 + lw, -0.5,
 	}
 )
 
@@ -273,8 +403,8 @@ const (
 
 	vertexShaderSourceFocus = `
 		#version 410
-		in vec3 position;
 		uniform mat4 proj;
+		in vec3 position;
 		void main() {
 			gl_Position = proj * vec4(position, 1.0);
 		}
@@ -315,10 +445,10 @@ func initOpenGL() {
 	log.Println("OpenGL version", version)
 
 	gl.Enable(gl.DEPTH_TEST)
-	gl.Enable(gl.POLYGON_OFFSET_FILL)
-	gl.PolygonOffset(2, 0)
+	// gl.Enable(gl.POLYGON_OFFSET_FILL)
+	// gl.PolygonOffset(2, 0)
 
-	gl.LineWidth(100)
+	gl.LineWidth(5)
 	gl.Enable(gl.LINE_SMOOTH)
 
 	gl.Enable(gl.BLEND)
@@ -808,20 +938,23 @@ func newFocusRenderer() *focusRenderer {
 	focusRen.program = createProgram(vertexShaderSourceFocus, fragmentShaderSourceFocus)
 	bindAttribute(focusRen.program, 0, "position")
 	focusRen.projectionUniform = uniformLocation(focusRen.program, "proj")
+	if focusRen.projectionUniform < 0 {
+		panic("Could not find projection uniform")
+	}
 	focusRen.pointsVBO = newVBO()
-	fillVBO(focusRen.pointsVBO, square)
 	focusRen.drawableVAO = newPointsVAO(focusRen.pointsVBO, 3)
 	return &focusRen
 }
 
 func (focusRen *focusRenderer) draw(player *person, planet *geom.Planet, w *glfw.Window) {
 	gl.UseProgram(focusRen.program)
+
 	pts := make([]float32, len(box))
 	for i := 0; i < len(box); i += 3 {
 		ind := geom.CellLoc{
-			Lon: float32(player.focusCellIndex.Lon) + box[i+0],
-			Lat: float32(player.focusCellIndex.Lat) + box[i+1],
-			Alt: float32(player.focusCellIndex.Alt) + box[i+2],
+			Lon: float32(player.focusCellIndex.Lon) + (box[i+0] * 1.01),
+			Lat: float32(player.focusCellIndex.Lat) + (box[i+1] * 1.01),
+			Alt: float32(player.focusCellIndex.Alt) + (box[i+2] * 1.01),
 		}
 		pt := planet.CellLocToCartesian(ind)
 		pts[i+0] = pt.X()
@@ -839,5 +972,5 @@ func (focusRen *focusRenderer) draw(player *person, planet *geom.Planet, w *glfw
 	gl.UniformMatrix4fv(focusRen.projectionUniform, 1, false, &proj[0])
 
 	gl.BindVertexArray(focusRen.drawableVAO)
-	gl.DrawArrays(gl.LINES, 0, int32(len(box)/3))
+	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(pts)/3))
 }

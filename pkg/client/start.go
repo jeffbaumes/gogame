@@ -17,6 +17,7 @@ const (
 	targetFPS      = 60
 	renderDistance = 4
 	gravity        = 9.8
+	secondsPerDay  = 300
 )
 
 // Start starts a client with the given username, host, and port
@@ -78,7 +79,6 @@ func Start(username, host string, port int) {
 		t = time.Now()
 
 		elapsedSeconds := float64(time.Since(startTime)) / float64(time.Second)
-		secondsPerDay := 30.0
 		_, timeOfDay := math.Modf(elapsedSeconds / secondsPerDay)
 
 		drawFrame(h, player, text, over, planetRen, peopleRen, focusRen, window, timeOfDay)
