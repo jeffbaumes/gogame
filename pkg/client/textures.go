@@ -6,22 +6,15 @@ import (
 	"image/draw"
 	"image/png"
 	"os"
+
+	"github.com/jeffbaumes/gogame/pkg/geom"
 )
 
 // LoadTextures loads textures from the textures directory into a single texture image
 func LoadTextures() *image.RGBA {
-	files := []string{
-		"grass-side",
-		"grass-top",
-		"dirt",
-		"stone",
-		"asteroid",
-		"moon",
-		"sun",
-	}
 	rgba := image.NewRGBA(image.Rect(0, 0, 64, 64))
-	for x := 0; x < len(files); x++ {
-		ImageFile, err := os.Open(fmt.Sprintf("textures/%s.png", files[x]))
+	for x := 1; x < len(geom.Materials); x++ {
+		ImageFile, err := os.Open(fmt.Sprintf("textures/%s.png", geom.Materials[x]))
 		if err != nil {
 			panic(err)
 		}
@@ -35,5 +28,4 @@ func LoadTextures() *image.RGBA {
 		ImageFile.Close()
 	}
 	return rgba
-
 }
