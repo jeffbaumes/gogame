@@ -401,6 +401,31 @@ const (
 		}
 	`
 
+	vertexShaderSourceHotbar = `
+		#version 410
+
+		in vec4 coord;
+		out vec2 tcoord;
+
+		void main(void) {
+			gl_Position = vec4(coord.xy, 0, 1);
+			tcoord = coord.zw;
+		}
+	`
+
+	fragmentShaderSourceHotbar = `
+		#version 410
+
+		in vec2 tcoord;
+		uniform sampler2D tex;
+		out vec4 frag_color;
+
+		void main(void) {
+			vec4 texel = texture(tex, tcoord);
+			frag_color = texel;
+		}
+	`
+
 	vertexShaderSourceFocus = `
 		#version 410
 		uniform mat4 proj;
@@ -455,7 +480,7 @@ func initOpenGL() {
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 }
 
-func drawFrame(h float32, player *person, text *screenText, over *overlay, planetRen *planetRenderer, peopleRen *peopleRenderer, focusRen *focusRenderer, window *glfw.Window, timeOfDay float64) {
+func drawFrame(h float32, player *person, text *screenText, over *overlay, planetRen *planetRenderer, peopleRen *peopleRenderer, focusRen *focusRenderer, bar *hotbar, window *glfw.Window, timeOfDay float64) {
 	sunAngle := timeOfDay * math.Pi * 2
 	sunDir := mgl32.Vec3{float32(math.Sin(sunAngle)), float32(math.Cos(sunAngle)), 0}
 	vpnDotSun := float64(player.loc.Normalize().Dot(sunDir))
@@ -485,6 +510,7 @@ func drawFrame(h float32, player *person, text *screenText, over *overlay, plane
 	focusRen.draw(player, planetRen.planet, window)
 	over.draw(window)
 	text.draw(player, window)
+	bar.draw(player, window)
 
 	glfw.PollEvents()
 	window.SwapBuffers()
@@ -927,6 +953,104 @@ func (text *screenText) draw(player *person, w *glfw.Window) {
 	gl.Uniform1i(text.textureUniform, text.textureUnit)
 	gl.BindVertexArray(text.drawableVAO)
 	gl.DrawArrays(gl.TRIANGLES, 0, 6*int32(text.charCount))
+}
+
+type hotbar struct {
+	drawableVAO    uint32
+	pointsVBO      uint32
+	numPoints      int32
+	program        uint32
+	texture        uint32
+	textureUnit    int32
+	textureUniform int32
+}
+
+func newHotbar() *hotbar {
+	h := hotbar{}
+
+	h.program = createProgram(vertexShaderSourceHotbar, fragmentShaderSourceHotbar)
+	bindAttribute(h.program, 0, "coord")
+
+	h.textureUniform = uniformLocation(h.program, "tex")
+	h.pointsVBO = newVBO()
+	h.drawableVAO = newPointsVAO(h.pointsVBO, 4)
+
+	existingImageFile, err := os.Open("textures.png")
+	if err != nil {
+		panic(err)
+	}
+	defer existingImageFile.Close()
+	img, err := png.Decode(existingImageFile)
+	if err != nil {
+		panic(err)
+	}
+	rgba := image.NewRGBA(img.Bounds())
+	draw.Draw(rgba, rgba.Bounds(), img, image.Pt(0, 0), draw.Src)
+
+	h.textureUnit = 3
+	gl.ActiveTexture(uint32(gl.TEXTURE0 + h.textureUnit))
+	gl.GenTextures(1, &h.texture)
+	gl.BindTexture(gl.TEXTURE_2D, h.texture)
+
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+
+	gl.TexImage2D(
+		gl.TEXTURE_2D,
+		0,
+		gl.SRGB_ALPHA,
+		int32(rgba.Rect.Size().X),
+		int32(rgba.Rect.Size().Y),
+		0,
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		gl.Ptr(rgba.Pix),
+	)
+
+	gl.GenerateMipmap(gl.TEXTURE_2D)
+	return &h
+}
+
+func (h *hotbar) computeGeometry(player *person, width, height int) {
+	// sx := 2.0 / float32(width) * 12
+	// sy := 2.0 / float32(height) * 12
+	aspect := float32(width) / float32(height)
+	sq := []float32{-1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1}
+	points := []float32{}
+	for m := 1; m < len(geom.Materials); m++ {
+		mx := float32(m % 4)
+		my := float32(m / 4)
+		px := 0.2*float32(m) - 0.2*float32(len(geom.Materials))/2
+		py := 1 - 0.1*aspect
+		sz := float32(0.05)
+		if m == player.currentMaterial {
+			sz = 0.08
+		}
+		pts := make([]float32, 2*len(sq))
+		for i := 0; i < len(sq); i += 2 {
+			pts = append(pts, []float32{
+				px + sq[i+0]*sz,
+				py + sq[i+1]*sz*aspect,
+				(mx + (sq[i+0]+1)/2) / 4,
+				(my + (sq[i+1]+1)/2) / 4,
+			}...)
+		}
+		points = append(points, pts...)
+	}
+	h.numPoints = int32(len(points) / 4)
+	fillVBO(h.pointsVBO, points)
+}
+
+func (h *hotbar) draw(player *person, w *glfw.Window) {
+	width, height := framebufferSize(w)
+	h.computeGeometry(player, width, height)
+
+	gl.UseProgram(h.program)
+	gl.Uniform1i(h.textureUniform, h.textureUnit)
+	gl.BindVertexArray(h.drawableVAO)
+	gl.DrawArrays(gl.TRIANGLES, 0, h.numPoints)
 }
 
 type focusRenderer struct {

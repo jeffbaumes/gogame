@@ -51,6 +51,7 @@ func Start(username, host string, port int) {
 	planetRen := newPlanetRenderer(planet)
 	over := newOverlay()
 	text := newScreenText()
+	bar := newHotbar()
 
 	// Setup server connection
 	smuxConn, e := cmux.Accept()
@@ -81,7 +82,7 @@ func Start(username, host string, port int) {
 		elapsedSeconds := float64(time.Since(startTime)) / float64(time.Second)
 		_, timeOfDay := math.Modf(elapsedSeconds / secondsPerDay)
 
-		drawFrame(h, player, text, over, planetRen, peopleRen, focusRen, window, timeOfDay)
+		drawFrame(h, player, text, over, planetRen, peopleRen, focusRen, bar, window, timeOfDay)
 
 		if cursorGrabbed(window) {
 			player.updatePosition(h, planet)
