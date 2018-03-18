@@ -41,9 +41,9 @@ func NewPlanet(radius float64, altCells, seed int, crpc *rpc.Client, db *sql.DB)
 	p.noise = opensimplex.NewWithSeed(int64(seed))
 	p.AltMin = radius - float64(altCells)
 	p.AltDelta = 1.0
-	p.LatMax = 60.0
+	p.LatMax = 90.0
 	p.LonCells = int(2.0*math.Pi*3.0/4.0*radius+0.5) / ChunkSize * ChunkSize
-	p.LatCells = int(2.0/3.0*math.Pi*radius) / ChunkSize * ChunkSize
+	p.LatCells = int(p.LatMax/90.0*math.Pi*radius) / ChunkSize * ChunkSize
 	p.AltCells = altCells / ChunkSize * ChunkSize
 	p.Chunks = make(map[ChunkIndex]*Chunk)
 	p.rpc = crpc
@@ -288,11 +288,14 @@ func (p *Planet) CellLocToCell(l CellLoc) *Cell {
 
 // CellIndexToCell converts a cell index to a cell
 func (p *Planet) CellIndexToCell(cellIndex CellIndex) *Cell {
+	chunkIndex := p.CellIndexToChunkIndex(cellIndex)
+	lonCells := p.LonCellsInChunkIndex(chunkIndex)
+	lonWidth := ChunkSize / lonCells
 	chunk := p.CellIndexToChunk(cellIndex)
 	if chunk == nil {
 		return nil
 	}
-	lonInd := cellIndex.Lon % ChunkSize
+	lonInd := (cellIndex.Lon % ChunkSize) / lonWidth
 	latInd := cellIndex.Lat % ChunkSize
 	altInd := cellIndex.Alt % ChunkSize
 	return chunk.Cells[lonInd][latInd][altInd]
@@ -301,7 +304,7 @@ func (p *Planet) CellIndexToCell(cellIndex CellIndex) *Cell {
 // SphericalToCellLoc converts spherical coordinates to floating-point cell indices
 func (p *Planet) SphericalToCellLoc(r, theta, phi float32) CellLoc {
 	alt := (r - float32(p.AltMin)) / float32(p.AltDelta)
-	lat := (180*theta/math.Pi - 90 + float32(p.LatMax)) * float32(p.LatCells) / (2 * float32(p.LatMax))
+	lat := (180*theta/math.Pi-90+float32(p.LatMax))*float32(p.LatCells)/(2*float32(p.LatMax)) - 0.5
 	if phi < 0 {
 		phi += 2 * math.Pi
 	}
@@ -333,9 +336,21 @@ func (p *Planet) CellLocToCartesian(l CellLoc) mgl32.Vec3 {
 func (p *Planet) CellLocToSpherical(l CellLoc) (r, theta, phi float32) {
 	l = p.validateCellLoc(l)
 	r = l.Alt*float32(p.AltDelta) + float32(p.AltMin)
-	theta = (math.Pi / 180) * ((90.0 - float32(p.LatMax)) + (l.Lat/float32(p.LatCells))*(2.0*float32(p.LatMax)))
+	theta = (math.Pi / 180) * ((90.0 - float32(p.LatMax)) + ((l.Lat+0.5)/float32(p.LatCells))*(2.0*float32(p.LatMax)))
 	phi = 2 * math.Pi * l.Lon / float32(p.LonCells)
 	return
+}
+
+// LonCellsInChunkIndex returns the number of longitude cells in a chunk, which changes based on latitude
+func (p *Planet) LonCellsInChunkIndex(ind ChunkIndex) int {
+	theta := (90.0 - float32(p.LatMax) + (float32(ind.Lat)+0.5)*float32(ChunkSize)/float32(p.LatCells)) * (2.0 * float32(p.LatMax))
+	if math.Abs(float64(theta-90)) >= 80 {
+		return ChunkSize / 4
+	}
+	if math.Abs(float64(theta-90)) >= 60 {
+		return ChunkSize / 2
+	}
+	return ChunkSize
 }
 
 // Chunk is a 3D block of planet cells
@@ -346,22 +361,28 @@ type Chunk struct {
 
 func newChunk(ind ChunkIndex, p *Planet) *Chunk {
 	chunk := Chunk{}
-	chunk.Cells = make([][][]*Cell, ChunkSize)
-	for lonIndex := 0; lonIndex < ChunkSize; lonIndex++ {
+	lonCells := p.LonCellsInChunkIndex(ind)
+	lonWidth := ChunkSize / lonCells
+	chunk.Cells = make([][][]*Cell, lonCells)
+	for lonIndex := 0; lonIndex < lonCells; lonIndex++ {
 		chunk.Cells[lonIndex] = make([][]*Cell, ChunkSize)
 		for latIndex := 0; latIndex < ChunkSize; latIndex++ {
 			for altIndex := 0; altIndex < ChunkSize; altIndex++ {
 				c := Cell{}
 				l := CellLoc{
-					Lon: float32(ChunkSize*ind.Lon + lonIndex),
+					Lon: float32(ChunkSize*ind.Lon + lonIndex*lonWidth),
 					Lat: float32(ChunkSize*ind.Lat + latIndex),
 					Alt: float32(ChunkSize*ind.Alt + altIndex),
 				}
 				pos := p.CellLocToCartesian(l)
 				const scale = 0.1
-				height := (p.noise.Eval3(float64(pos[0])*scale, float64(pos[1])*scale, float64(pos[2])*scale) + 1.0) * float64(p.AltCells) / 4.0
-				if float64(altIndex) <= height {
-					c.Material = Stone
+				height := (p.noise.Eval3(float64(pos[0])*scale, float64(pos[1])*scale, float64(pos[2])*scale) + 1.0) * float64(p.AltCells) / 2.0
+				if float64(l.Alt) <= height {
+					if l.Alt > 8 {
+						c.Material = Asteroid
+					} else {
+						c.Material = Moon
+					}
 				} else {
 					c.Material = Air
 				}
@@ -380,19 +401,21 @@ type Cell struct {
 const (
 	Air      = 0
 	Grass    = 1
-	Stone    = 2
-	Moon     = 3
-	Sun      = 4
+	Dirt     = 2
+	Stone    = 3
+	Moon     = 4
 	Asteroid = 5
+	Sun      = 6
 )
 
 var (
 	Materials []string = []string{
 		"air",
 		"grass",
+		"dirt",
 		"stone",
 		"moon",
-		"sun",
 		"asteroid",
+		"sun",
 	}
 )

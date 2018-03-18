@@ -118,7 +118,7 @@ var (
 		0.5, -0.5, 0.5,
 	}
 
-	lw  float32 = 0.5
+	lw  float32 = 0.1
 	box         = []float32{
 		0.5, 0.5, 0.5,
 		-0.5, 0.5, 0.5,
@@ -684,11 +684,14 @@ func (cr *chunkRenderer) updateGeometry(planet *geom.Planet, lonIndex, latIndex,
 	normals := []float32{}
 	tcoords := []float32{}
 
-	for cLon := 0; cLon < cs; cLon++ {
+	lonCells := planet.LonCellsInChunkIndex(geom.ChunkIndex{Lon: lonIndex, Lat: latIndex, Alt: altIndex})
+	lonWidth := geom.ChunkSize / lonCells
+
+	for cLon := 0; cLon < lonCells; cLon++ {
 		for cLat := 0; cLat < cs; cLat++ {
 			for cAlt := 0; cAlt < cs; cAlt++ {
 				cellIndex := geom.CellIndex{
-					Lon: cs*lonIndex + cLon,
+					Lon: cs*lonIndex + cLon*lonWidth,
 					Lat: cs*latIndex + cLat,
 					Alt: cs*altIndex + cAlt,
 				}
@@ -697,7 +700,7 @@ func (cr *chunkRenderer) updateGeometry(planet *geom.Planet, lonIndex, latIndex,
 					pts := make([]float32, len(square))
 					for i := 0; i < len(square); i += 3 {
 						l := geom.CellLoc{
-							Lon: float32(cellIndex.Lon) + square[i+0],
+							Lon: float32(cellIndex.Lon) + float32(lonWidth-1)/2 + square[i+0]*float32(lonWidth),
 							Lat: float32(cellIndex.Lat) + square[i+1],
 							Alt: float32(cellIndex.Alt) + square[i+2],
 						}
@@ -948,11 +951,13 @@ func newFocusRenderer() *focusRenderer {
 
 func (focusRen *focusRenderer) draw(player *person, planet *geom.Planet, w *glfw.Window) {
 	gl.UseProgram(focusRen.program)
+	lonCells := planet.LonCellsInChunkIndex(planet.CellIndexToChunkIndex(player.focusCellIndex))
+	lonWidth := geom.ChunkSize / lonCells
 
 	pts := make([]float32, len(box))
 	for i := 0; i < len(box); i += 3 {
 		ind := geom.CellLoc{
-			Lon: float32(player.focusCellIndex.Lon) + (box[i+0] * 1.01),
+			Lon: float32(player.focusCellIndex.Lon/lonWidth*lonWidth) + float32(lonWidth-1)/2 + float32(lonWidth)*(box[i+0]*1.01),
 			Lat: float32(player.focusCellIndex.Lat) + (box[i+1] * 1.01),
 			Alt: float32(player.focusCellIndex.Alt) + (box[i+2] * 1.01),
 		}
