@@ -398,20 +398,20 @@ type Cell struct {
 	Material int
 }
 
-// Constants for materials
-const (
-	Air      = 0
-	Grass    = 1
-	Dirt     = 2
-	Stone    = 3
-	Moon     = 4
-	Asteroid = 5
-	Sun      = 6
-)
+type stringSlice []string
 
-// Materials contains the names for each material
+func (slice stringSlice) pos(value string) int {
+	for p, v := range slice {
+		if v == value {
+			return p
+		}
+	}
+	return -1
+}
+
+// List of materials
 var (
-	Materials = []string{
+	Materials = stringSlice{
 		"air",
 		"grass",
 		"dirt",
@@ -419,5 +419,28 @@ var (
 		"moon",
 		"asteroid",
 		"sun",
+		"blue_block",
+		"blue_sand",
+		"purple_block",
+		"purple_sand",
+		"red_block",
+		"red_sand",
+		"yellow_block",
+		"yellow_sand",
 	}
+	Air         = Materials.pos("air")
+	Grass       = Materials.pos("grass")
+	Dirt        = Materials.pos("dirt")
+	Stone       = Materials.pos("stone")
+	Moon        = Materials.pos("moon")
+	Asteroid    = Materials.pos("asteroid")
+	Sun         = Materials.pos("sun")
+	BlueBlock   = Materials.pos("blue_block")
+	BlueSand    = Materials.pos("blue_sand")
+	PurpleBlock = Materials.pos("purple_block")
+	PurpleSand  = Materials.pos("purple_sand")
+	RedBlock    = Materials.pos("red_block")
+	RedSand     = Materials.pos("red_sand")
+	YellowBlock = Materials.pos("yellow_block")
+	YellowSand  = Materials.pos("yellow_sand")
 )

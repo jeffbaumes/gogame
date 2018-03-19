@@ -630,7 +630,7 @@ func newPlanetRenderer(planet *geom.Planet) *planetRenderer {
 	gl.TexImage2D(
 		gl.TEXTURE_2D,
 		0,
-		gl.SRGB_ALPHA,
+		gl.RGBA,
 		int32(rgba.Rect.Size().X),
 		int32(rgba.Rect.Size().Y),
 		0,
@@ -901,7 +901,8 @@ func newScreenText() *screenText {
 	gl.TexImage2D(
 		gl.TEXTURE_2D,
 		0,
-		gl.SRGB_ALPHA,
+		// gl.SRGB_ALPHA,
+		gl.RGBA,
 		int32(rgba.Rect.Size().X),
 		int32(rgba.Rect.Size().Y),
 		0,
@@ -1000,7 +1001,7 @@ func newHotbar() *hotbar {
 	gl.TexImage2D(
 		gl.TEXTURE_2D,
 		0,
-		gl.SRGB_ALPHA,
+		gl.RGBA,
 		int32(rgba.Rect.Size().X),
 		int32(rgba.Rect.Size().Y),
 		0,
@@ -1019,20 +1020,21 @@ func (h *hotbar) computeGeometry(player *person, width, height int) {
 	aspect := float32(width) / float32(height)
 	sq := []float32{-1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1}
 	points := []float32{}
+	sz := float32(0.05)
 	for m := 1; m < len(geom.Materials); m++ {
 		mx := float32(m % 4)
 		my := float32(m / 4)
-		px := 0.2*float32(m) - 0.2*float32(len(geom.Materials))/2
+		px := 1.25 * 2 * sz * (float32(m) - float32(len(geom.Materials))/2)
 		py := 1 - 0.1*aspect
-		sz := float32(0.05)
+		scale := sz
 		if m == player.currentMaterial {
-			sz = 0.08
+			scale = 1.5 * sz
 		}
 		pts := make([]float32, 2*len(sq))
 		for i := 0; i < len(sq); i += 2 {
 			pts = append(pts, []float32{
-				px + sq[i+0]*sz,
-				py + sq[i+1]*sz*aspect,
+				px + sq[i+0]*scale,
+				py + sq[i+1]*scale*aspect,
 				(mx + (sq[i+0]+1)/2) / 4,
 				(my + (sq[i+1]+1)/2) / 4,
 			}...)

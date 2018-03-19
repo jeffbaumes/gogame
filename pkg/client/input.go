@@ -70,6 +70,18 @@ func keyCallback(player *person) func(w *glfw.Window, key glfw.Key, scancode int
 				player.currentMaterial = 5
 			case glfw.Key6:
 				player.currentMaterial = 6
+			case glfw.Key7:
+				player.currentMaterial = 7
+			case glfw.Key8:
+				player.currentMaterial = 8
+			case glfw.Key9:
+				player.currentMaterial = 9
+			case glfw.Key0:
+				player.currentMaterial = 10
+			case glfw.KeyMinus:
+				player.currentMaterial = 11
+			case glfw.KeyEqual:
+				player.currentMaterial = 12
 			case glfw.KeyW:
 				player.forwardVel = player.walkVel
 			case glfw.KeyS:
