@@ -1,4 +1,4 @@
-package geom
+package common
 
 import (
 	opensimplex "github.com/ojrac/opensimplex-go"

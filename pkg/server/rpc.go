@@ -3,7 +3,7 @@ package server
 import (
 	"log"
 
-	"github.com/jeffbaumes/gogame/pkg/geom"
+	"github.com/jeffbaumes/gogame/pkg/common"
 )
 
 // API is the RPC tag for server calls
@@ -12,7 +12,7 @@ type API struct {
 }
 
 // GetChunk returns the planet chunk for the given chunk coordinates
-func (api *API) GetChunk(args *geom.ChunkIndex, chunk *geom.Chunk) error {
+func (api *API) GetChunk(args *common.ChunkIndex, chunk *common.Chunk) error {
 	c := p.GetChunk(*args)
 	if c != nil {
 		*chunk = *c
@@ -21,7 +21,7 @@ func (api *API) GetChunk(args *geom.ChunkIndex, chunk *geom.Chunk) error {
 }
 
 // UpdatePersonState updates a person's position
-func (api *API) UpdatePersonState(state *geom.PersonState, ret *bool) error {
+func (api *API) UpdatePersonState(state *common.PlayerState, ret *bool) error {
 	var validPeople []*connectedPerson
 	for _, c := range api.connectedPeople {
 		if c.state.Name == state.Name {
@@ -44,7 +44,7 @@ func (api *API) UpdatePersonState(state *geom.PersonState, ret *bool) error {
 }
 
 // SetCellMaterial sets the material for a particular cell
-func (api *API) SetCellMaterial(args *geom.RPCSetCellMaterialArgs, ret *bool) error {
+func (api *API) SetCellMaterial(args *common.RPCSetCellMaterialArgs, ret *bool) error {
 	*ret = p.SetCellMaterial(args.Index, args.Material)
 	var validPeople []*connectedPerson
 	for _, c := range api.connectedPeople {

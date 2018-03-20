@@ -1,35 +1,38 @@
 package client
 
-import "github.com/jeffbaumes/gogame/pkg/geom"
+import (
+	"github.com/jeffbaumes/gogame/pkg/client/scene"
+	"github.com/jeffbaumes/gogame/pkg/common"
+)
 
 // API is the RPC tag for client calls
 type API struct {
-	planetRen       *planetRenderer
-	person          *person
-	connectedPeople []*geom.PersonState
+	planetRen       *scene.Planet
+	player          *common.Player
+	connectedPeople []*common.PlayerState
 }
 
-func newAPI(planetRen *planetRenderer, person *person) *API {
-	return &API{planetRen: planetRen, person: person}
+func newAPI(planetRen *scene.Planet, player *common.Player) *API {
+	return &API{planetRen: planetRen, player: player}
 }
 
 // SetCellMaterial sets the material for a particular cell
-func (api *API) SetCellMaterial(args *geom.RPCSetCellMaterialArgs, ret *bool) error {
-	api.planetRen.setCellMaterial(args.Index, args.Material)
+func (api *API) SetCellMaterial(args *common.RPCSetCellMaterialArgs, ret *bool) error {
+	api.planetRen.SetCellMaterial(args.Index, args.Material)
 	*ret = true
 	return nil
 }
 
 // GetPersonState returns this client's logged in user state
-func (api *API) GetPersonState(args *int, ret *geom.PersonState) error {
-	ret.Name = api.person.name
-	ret.Position = api.person.loc
+func (api *API) GetPersonState(args *int, ret *common.PlayerState) error {
+	ret.Name = api.player.Name
+	ret.Position = api.player.Loc
 	return nil
 }
 
 // PersonDisconnected notifies a client that a player has disconnected
 func (api *API) PersonDisconnected(name *string, ret *bool) error {
-	var validPeople []*geom.PersonState
+	var validPeople []*common.PlayerState
 	*ret = false
 	for _, p := range api.connectedPeople {
 		if p.Name != *name {
@@ -42,8 +45,8 @@ func (api *API) PersonDisconnected(name *string, ret *bool) error {
 }
 
 // UpdatePersonState updates another person's state
-func (api *API) UpdatePersonState(state *geom.PersonState, ret *bool) error {
-	if state.Name == api.person.name {
+func (api *API) UpdatePersonState(state *common.PlayerState, ret *bool) error {
+	if state.Name == api.player.Name {
 		return nil
 	}
 	found := false

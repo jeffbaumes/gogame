@@ -1,4 +1,4 @@
-package geom
+package common
 
 import "github.com/go-gl/mathgl/mgl32"
 

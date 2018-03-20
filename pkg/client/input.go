@@ -5,21 +5,16 @@ import (
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
-	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/jeffbaumes/gogame/pkg/geom"
+	"github.com/jeffbaumes/gogame/pkg/client/scene"
+	"github.com/jeffbaumes/gogame/pkg/common"
 )
 
 func cursorGrabbed(w *glfw.Window) bool {
 	return w.GetInputMode(glfw.CursorMode) == glfw.CursorDisabled
 }
 
-func framebufferSize(w *glfw.Window) (fbw, fbh int) {
-	fbw, fbh = w.GetFramebufferSize()
-	return
-}
-
-func cursorPosCallback(player *person) func(w *glfw.Window, xpos, ypos float64) {
+func cursorPosCallback(player *common.Player) func(w *glfw.Window, xpos, ypos float64) {
 	lastCursor := mgl64.Vec2{math.NaN(), math.NaN()}
 	return func(w *glfw.Window, xpos, ypos float64) {
 		if !cursorGrabbed(w) {
@@ -31,11 +26,7 @@ func cursorPosCallback(player *person) func(w *glfw.Window, xpos, ypos float64) 
 			lastCursor = curCursor
 		}
 		delta := curCursor.Sub(lastCursor)
-		lookHeadingDelta := -0.1 * delta[0]
-		normalDir := player.loc.Normalize()
-		player.lookHeading = mgl32.QuatRotate(float32(lookHeadingDelta*math.Pi/180.0), normalDir).Rotate(player.lookHeading)
-		player.lookAltitude = player.lookAltitude - 0.1*delta[1]
-		player.lookAltitude = math.Max(math.Min(player.lookAltitude, 89.9), -89.9)
+		player.Swivel(delta[0], delta[1])
 		lastCursor = curCursor
 	}
 }
@@ -45,9 +36,9 @@ func glToPixel(w *glfw.Window, xpos, ypos float64) (xpix, ypix float64) {
 	return float64(winw) * (xpos + 1) / 2, float64(winh) * (-ypos + 1) / 2
 }
 
-func keyCallback(player *person) func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
+func keyCallback(player *common.Player) func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
 	return func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
-		if player.inInventory {
+		if player.InInventory {
 			slot := -1
 			switch action {
 			case glfw.Press:
@@ -82,17 +73,15 @@ func keyCallback(player *person) func(w *glfw.Window, key glfw.Key, scancode int
 				xpos, ypos := w.GetCursorPos()
 				winw, winh := w.GetSize()
 				aspect := float32(winw) / float32(winh)
-				println(int(xpos), int(ypos))
-				for m := range geom.Materials {
+				for m := range common.Materials {
 					sz := float32(0.05)
-					px := 1.25 * 2 * sz * (float32(m) - float32(len(geom.Materials))/2)
+					px := 1.25 * 2 * sz * (float32(m) - float32(len(common.Materials))/2)
 					py := 1 - 0.25*aspect
 					scale := sz
 					xMin, yMin := glToPixel(w, float64(px-scale), float64(py+scale*aspect))
 					xMax, yMax := glToPixel(w, float64(px+scale), float64(py-scale*aspect))
-					println(int(xMin), int(xMax), int(yMin), int(yMax))
 					if float64(xpos) >= xMin && float64(xpos) <= xMax && float64(ypos) >= yMin && float64(ypos) <= yMax {
-						player.hotBar[slot] = m
+						player.Hotbar[slot] = m
 					}
 				}
 			}
@@ -101,69 +90,69 @@ func keyCallback(player *person) func(w *glfw.Window, key glfw.Key, scancode int
 		case glfw.Press:
 			switch key {
 			case glfw.KeySpace:
-				if player.gameMode == normal {
-					player.holdingJump = true
+				if player.GameMode == common.Normal {
+					player.HoldingJump = true
 				} else {
-					player.upVel = player.walkVel
+					player.UpVel = player.WalkVel
 				}
 			case glfw.KeyLeftShift:
-				if player.gameMode == flying {
-					player.downVel = player.walkVel
+				if player.GameMode == common.Flying {
+					player.DownVel = player.WalkVel
 				}
 			case glfw.Key1:
-				player.activeHotBarSlot = 0
+				player.ActiveHotBarSlot = 0
 			case glfw.Key2:
-				player.activeHotBarSlot = 1
+				player.ActiveHotBarSlot = 1
 			case glfw.Key3:
-				player.activeHotBarSlot = 2
+				player.ActiveHotBarSlot = 2
 			case glfw.Key4:
-				player.activeHotBarSlot = 3
+				player.ActiveHotBarSlot = 3
 			case glfw.Key5:
-				player.activeHotBarSlot = 4
+				player.ActiveHotBarSlot = 4
 			case glfw.Key6:
-				player.activeHotBarSlot = 5
+				player.ActiveHotBarSlot = 5
 			case glfw.Key7:
-				player.activeHotBarSlot = 6
+				player.ActiveHotBarSlot = 6
 			case glfw.Key8:
-				player.activeHotBarSlot = 7
+				player.ActiveHotBarSlot = 7
 			case glfw.Key9:
-				player.activeHotBarSlot = 8
+				player.ActiveHotBarSlot = 8
 			case glfw.Key0:
-				player.activeHotBarSlot = 9
+				player.ActiveHotBarSlot = 9
 			case glfw.KeyMinus:
-				player.activeHotBarSlot = 10
+				player.ActiveHotBarSlot = 10
 			case glfw.KeyEqual:
-				player.activeHotBarSlot = 11
+				player.ActiveHotBarSlot = 11
 			case glfw.KeyE:
-				if player.inInventory == false {
-					player.hotBarOn = true
-					player.inInventory = true
+				if player.InInventory == false {
+					player.HotbarOn = true
+					player.InInventory = true
 					w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 				} else {
-					player.inInventory = false
+					player.InInventory = false
 					w.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
 				}
 			case glfw.KeyH:
-				if player.hotBarOn == false {
-					player.hotBarOn = true
+				if player.HotbarOn == false {
+					player.HotbarOn = true
 				} else {
-					player.hotBarOn = false
+					player.HotbarOn = false
 				}
 			case glfw.KeyW:
-				player.forwardVel = player.walkVel
+				player.ForwardVel = player.WalkVel
 			case glfw.KeyS:
-				player.backVel = player.walkVel
+				player.BackVel = player.WalkVel
 			case glfw.KeyD:
-				player.rightVel = player.walkVel
+				player.RightVel = player.WalkVel
 			case glfw.KeyA:
-				player.leftVel = player.walkVel
+				player.LeftVel = player.WalkVel
 			case glfw.KeyM:
-				player.gameMode++
-				if player.gameMode >= numGameModes {
-					player.gameMode = 0
+				player.GameMode++
+				if player.GameMode >= common.NumGameModes {
+					player.GameMode = 0
 				}
-				if player.gameMode == flying {
-					player.fallVel = 0
+				if player.GameMode == common.Flying {
+					player.FallVel = 0
 				}
 			case glfw.KeyEscape:
 				w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
@@ -171,49 +160,49 @@ func keyCallback(player *person) func(w *glfw.Window, key glfw.Key, scancode int
 		case glfw.Release:
 			switch key {
 			case glfw.KeySpace:
-				player.holdingJump = false
-				player.upVel = 0
+				player.HoldingJump = false
+				player.UpVel = 0
 			case glfw.KeyLeftShift:
-				player.downVel = 0
+				player.DownVel = 0
 			case glfw.KeyW:
-				player.forwardVel = 0
+				player.ForwardVel = 0
 			case glfw.KeyS:
-				player.backVel = 0
+				player.BackVel = 0
 			case glfw.KeyD:
-				player.rightVel = 0
+				player.RightVel = 0
 			case glfw.KeyA:
-				player.leftVel = 0
+				player.LeftVel = 0
 			}
 		}
 	}
 }
 
 func windowSizeCallback(w *glfw.Window, wd, ht int) {
-	fwidth, fheight := framebufferSize(w)
+	fwidth, fheight := scene.FramebufferSize(w)
 	gl.Viewport(0, 0, int32(fwidth), int32(fheight))
 }
 
-func mouseButtonCallback(player *person, planetRen *planetRenderer) func(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
+func mouseButtonCallback(player *common.Player, planetRen *scene.Planet) func(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
 	return func(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
-		planet := planetRen.planet
+		planet := planetRen.Planet
 		if cursorGrabbed(w) {
 			if action == glfw.Press && button == glfw.MouseButtonLeft {
-				increment := player.lookDir().Mul(0.05)
-				pos := player.loc
+				increment := player.LookDir().Mul(0.05)
+				pos := player.Loc
 				for i := 0; i < 100; i++ {
 					pos = pos.Add(increment)
 					cell := planet.CartesianToCell(pos)
-					if cell != nil && cell.Material != geom.Air {
+					if cell != nil && cell.Material != common.Air {
 						cellIndex := planet.CartesianToCellIndex(pos)
-						planetRen.setCellMaterial(cellIndex, geom.Air)
+						planetRen.SetCellMaterial(cellIndex, common.Air)
 						break
 					}
 				}
 			} else if action == glfw.Press && button == glfw.MouseButtonRight {
-				increment := player.lookDir().Mul(0.05)
-				pos := player.loc
-				prevCellIndex := geom.CellIndex{Lon: -1, Lat: -1, Alt: -1}
-				cellIndex := geom.CellIndex{}
+				increment := player.LookDir().Mul(0.05)
+				pos := player.Loc
+				prevCellIndex := common.CellIndex{Lon: -1, Lat: -1, Alt: -1}
+				cellIndex := common.CellIndex{}
 				for i := 0; i < 100; i++ {
 					pos = pos.Add(increment)
 					nextCellIndex := planet.CartesianToCellIndex(pos)
@@ -221,9 +210,9 @@ func mouseButtonCallback(player *person, planetRen *planetRenderer) func(w *glfw
 						prevCellIndex = cellIndex
 						cellIndex = nextCellIndex
 						cell := planet.CellIndexToCell(cellIndex)
-						if cell != nil && cell.Material != geom.Air {
+						if cell != nil && cell.Material != common.Air {
 							if prevCellIndex.Lon != -1 {
-								planetRen.setCellMaterial(prevCellIndex, player.hotBar[player.activeHotBarSlot])
+								planetRen.SetCellMaterial(prevCellIndex, player.Hotbar[player.ActiveHotBarSlot])
 							}
 							break
 						}

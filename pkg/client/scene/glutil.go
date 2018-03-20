@@ -1,4 +1,4 @@
-package client
+package scene
 
 import (
 	"fmt"

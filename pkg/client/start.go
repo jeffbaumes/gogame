@@ -10,14 +10,14 @@ import (
 
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/hashicorp/yamux"
-	"github.com/jeffbaumes/gogame/pkg/geom"
+	"github.com/jeffbaumes/gogame/pkg/client/scene"
+	"github.com/jeffbaumes/gogame/pkg/common"
 )
 
 const (
-	targetFPS      = 60
-	renderDistance = 4
-	gravity        = 9.8
-	secondsPerDay  = 300
+	targetFPS     = 60
+	gravity       = 9.8
+	secondsPerDay = 300
 )
 
 // Start starts a client with the given username, host, and port
@@ -28,7 +28,7 @@ func Start(username, host string, port int) {
 	defer glfw.Terminate()
 	initOpenGL()
 
-	player := newPerson(username)
+	player := common.NewPlayer(username)
 
 	conn, err := net.Dial("tcp", fmt.Sprintf("%v:%v", host, port))
 	if err != nil {
@@ -47,11 +47,11 @@ func Start(username, host string, port int) {
 	cRPC := rpc.NewClient(stream)
 
 	// Create planet
-	planet := geom.NewPlanet(50.0, 16, 0, cRPC, nil)
-	planetRen := newPlanetRenderer(planet)
-	over := newOverlay()
-	text := newScreenText()
-	bar := newHotbar()
+	planet := common.NewPlanet(50.0, 16, 0, cRPC, nil)
+	planetRen := scene.NewPlanet(planet)
+	over := scene.NewCrosshair()
+	text := scene.NewText()
+	bar := scene.NewHotbar()
 
 	// Setup server connection
 	smuxConn, e := cmux.Accept()
@@ -63,8 +63,8 @@ func Start(username, host string, port int) {
 	s.Register(clientAPI)
 	go s.ServeConn(smuxConn)
 
-	peopleRen := newPeopleRenderer(clientAPI)
-	focusRen := newFocusRenderer()
+	peopleRen := scene.NewPlayers(&clientAPI.connectedPeople)
+	focusRen := scene.NewFocusCell()
 
 	window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
 	window.SetKeyCallback(keyCallback(player))
@@ -84,15 +84,15 @@ func Start(username, host string, port int) {
 
 		drawFrame(h, player, text, over, planetRen, peopleRen, focusRen, bar, window, timeOfDay)
 
-		player.updatePosition(h, planet)
+		player.UpdatePosition(h, planet)
 
 		if float64(time.Since(syncT))/float64(time.Second) > 0.05 {
 			syncT = time.Now()
 			var ret bool
-			cRPC.Go("API.UpdatePersonState", &geom.PersonState{
-				Name:     player.name,
-				Position: player.loc,
-				LookDir:  player.lookDir(),
+			cRPC.Go("API.UpdatePersonState", &common.PlayerState{
+				Name:     player.Name,
+				Position: player.Loc,
+				LookDir:  player.LookDir(),
 			}, &ret, nil)
 		}
 

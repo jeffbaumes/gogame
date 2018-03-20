@@ -9,13 +9,13 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/yamux"
-	"github.com/jeffbaumes/gogame/pkg/geom"
+	"github.com/jeffbaumes/gogame/pkg/common"
 	_ "github.com/mattn/go-sqlite3" // Needed to use sqlite
 )
 
 var (
-	u *geom.Universe
-	p *geom.Planet
+	u *common.Universe
+	p *common.Planet
 )
 
 // Start takes a name, seed, and port and starts the universe server
@@ -59,7 +59,7 @@ func Start(name string, seed, port int) {
 	}
 	rows.Close()
 
-	p = geom.NewPlanet(50.0, 16, seed, nil, db)
+	p = common.NewPlanet(50.0, 16, seed, nil, db)
 
 	api := new(API)
 	listener, e := net.Listen("tcp", fmt.Sprintf(":%v", port))
@@ -94,7 +94,7 @@ func Start(name string, seed, port int) {
 		crpc := rpc.NewClient(stream)
 
 		// Ask client for player name
-		var state geom.PersonState
+		var state common.PlayerState
 		e = crpc.Call("API.GetPersonState", 0, &state)
 		if e != nil {
 			log.Fatal("GetPersonState error:", e)
@@ -107,7 +107,7 @@ func Start(name string, seed, port int) {
 
 type connectedPerson struct {
 	rpc   *rpc.Client
-	state geom.PersonState
+	state common.PlayerState
 }
 
 func checkErr(err error) {
