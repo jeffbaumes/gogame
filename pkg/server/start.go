@@ -20,7 +20,7 @@ var (
 
 // Start takes a name, seed, and port and starts the universe server
 func Start(name string, seed, port int) {
-	dbName := name + ".db"
+	dbName := "worlds/" + name + ".db"
 
 	db, err := sql.Open("sqlite3", dbName)
 	checkErr(err)

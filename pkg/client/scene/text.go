@@ -87,7 +87,7 @@ func NewText() *Text {
 
 	// Load up texture info
 	var textMeta map[string]interface{}
-	textMetaBytes, e := ioutil.ReadFile("font.json")
+	textMetaBytes, e := ioutil.ReadFile("textures/font/font.json")
 	if e != nil {
 		panic(e)
 	}
@@ -109,7 +109,7 @@ func NewText() *Text {
 	// Generated from https://evanw.github.io/font-texture-generator/
 	// Inconsolata font (installed on system with Google Web Fonts), size 24
 	// Power of 2, white with black stroke, thickness 2
-	existingImageFile, err := os.Open("font.png")
+	existingImageFile, err := os.Open("textures/font/font.png")
 	if err != nil {
 		panic(err)
 	}
