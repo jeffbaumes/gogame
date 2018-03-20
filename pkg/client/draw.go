@@ -605,17 +605,17 @@ func newPlanetRenderer(planet *geom.Planet) *planetRenderer {
 	pr.sunDirUniform = uniformLocation(pr.program, "sundir")
 	pr.textureUniform = uniformLocation(pr.program, "texBase")
 
-	existingImageFile, err := os.Open("textures.png")
-	if err != nil {
-		panic(err)
-	}
-	defer existingImageFile.Close()
-	img, err := png.Decode(existingImageFile)
-	if err != nil {
-		panic(err)
-	}
-	rgba := image.NewRGBA(img.Bounds())
-	draw.Draw(rgba, rgba.Bounds(), img, image.Pt(0, 0), draw.Src)
+	// existingImageFile, err := os.Open("textures.png")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer existingImageFile.Close()
+	// img, err := png.Decode(existingImageFile)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	rgba := LoadTextures()
+	// draw.Draw(rgba, rgba.Bounds(), img, image.Pt(0, 0), draw.Src)
 
 	pr.textureUnit = 1
 	gl.ActiveTexture(uint32(gl.TEXTURE0 + pr.textureUnit))
@@ -973,21 +973,22 @@ func newHotbar() *hotbar {
 	bindAttribute(h.program, 0, "coord")
 
 	h.textureUniform = uniformLocation(h.program, "tex")
+	fmt.Print(uniformLocation(h.program, "tex"))
 	h.pointsVBO = newVBO()
 	h.drawableVAO = newPointsVAO(h.pointsVBO, 4)
 
-	existingImageFile, err := os.Open("textures.png")
-	if err != nil {
-		panic(err)
-	}
-	defer existingImageFile.Close()
-	img, err := png.Decode(existingImageFile)
-	if err != nil {
-		panic(err)
-	}
-	rgba := image.NewRGBA(img.Bounds())
-	draw.Draw(rgba, rgba.Bounds(), img, image.Pt(0, 0), draw.Src)
-
+	// existingImageFile, err := os.Open("textures.png")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer existingImageFile.Close()
+	// img, err := png.Decode(existingImageFile)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// rgba := image.NewRGBA(img.Bounds())
+	// draw.Draw(rgba, rgba.Bounds(), img, image.Pt(0, 0), draw.Src)
+	rgba := LoadTextures()
 	h.textureUnit = 3
 	gl.ActiveTexture(uint32(gl.TEXTURE0 + h.textureUnit))
 	gl.GenTextures(1, &h.texture)
@@ -1015,19 +1016,17 @@ func newHotbar() *hotbar {
 }
 
 func (h *hotbar) computeGeometry(player *person, width, height int) {
-	// sx := 2.0 / float32(width) * 12
-	// sy := 2.0 / float32(height) * 12
 	aspect := float32(width) / float32(height)
 	sq := []float32{-1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1}
 	points := []float32{}
 	sz := float32(0.05)
-	for m := 1; m < len(geom.Materials); m++ {
-		mx := float32(m % 4)
-		my := float32(m / 4)
-		px := 1.25 * 2 * sz * (float32(m) - float32(len(geom.Materials))/2)
+	for m, mat := range player.hotBar {
+		mx := float32(mat % 4)
+		my := float32(mat / 4)
+		px := 1.25 * 2 * sz * (float32(m+1) - float32(len(geom.Materials))/2)
 		py := 1 - 0.1*aspect
 		scale := sz
-		if m == player.currentMaterial {
+		if m == player.activeHotBarSlot {
 			scale = 1.5 * sz
 		}
 		pts := make([]float32, 2*len(sq))
@@ -1041,18 +1040,39 @@ func (h *hotbar) computeGeometry(player *person, width, height int) {
 		}
 		points = append(points, pts...)
 	}
+	if player.inInventory {
+		for m := 1; m < len(geom.Materials); m++ {
+			mx := float32(m % 4)
+			my := float32(m / 4)
+			px := 1.25 * 2 * sz * (float32(m) - float32(len(geom.Materials))/2)
+			py := 1 - 0.25*aspect
+			scale := sz
+			pts := make([]float32, 2*len(sq))
+			for i := 0; i < len(sq); i += 2 {
+				pts = append(pts, []float32{
+					px + sq[i+0]*scale,
+					py + sq[i+1]*scale*aspect,
+					(mx + (sq[i+0]+1)/2) / 4,
+					(my + (sq[i+1]+1)/2) / 4,
+				}...)
+			}
+			points = append(points, pts...)
+		}
+	}
 	h.numPoints = int32(len(points) / 4)
 	fillVBO(h.pointsVBO, points)
 }
 
 func (h *hotbar) draw(player *person, w *glfw.Window) {
-	width, height := framebufferSize(w)
-	h.computeGeometry(player, width, height)
-
-	gl.UseProgram(h.program)
-	gl.Uniform1i(h.textureUniform, h.textureUnit)
-	gl.BindVertexArray(h.drawableVAO)
-	gl.DrawArrays(gl.TRIANGLES, 0, h.numPoints)
+	if player.hotBarOn {
+		width, height := framebufferSize(w)
+		h.textureUniform = 0
+		h.computeGeometry(player, width, height)
+		gl.UseProgram(h.program)
+		gl.Uniform1i(h.textureUniform, h.textureUnit)
+		gl.BindVertexArray(h.drawableVAO)
+		gl.DrawArrays(gl.TRIANGLES, 0, h.numPoints)
+	}
 }
 
 type focusRenderer struct {

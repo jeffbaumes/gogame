@@ -40,10 +40,62 @@ func cursorPosCallback(player *person) func(w *glfw.Window, xpos, ypos float64) 
 	}
 }
 
+func glToPixel(w *glfw.Window, xpos, ypos float64) (xpix, ypix float64) {
+	winw, winh := w.GetSize()
+	return float64(winw) * (xpos + 1) / 2, float64(winh) * (-ypos + 1) / 2
+}
+
 func keyCallback(player *person) func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
 	return func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
-		if !cursorGrabbed(w) {
-			return
+		if player.inInventory {
+			slot := -1
+			switch action {
+			case glfw.Press:
+				switch key {
+				case glfw.Key1:
+					slot = 0
+				case glfw.Key2:
+					slot = 1
+				case glfw.Key3:
+					slot = 2
+				case glfw.Key4:
+					slot = 3
+				case glfw.Key5:
+					slot = 4
+				case glfw.Key6:
+					slot = 5
+				case glfw.Key7:
+					slot = 6
+				case glfw.Key8:
+					slot = 7
+				case glfw.Key9:
+					slot = 8
+				case glfw.Key0:
+					slot = 9
+				case glfw.KeyMinus:
+					slot = 10
+				case glfw.KeyEqual:
+					slot = 11
+				}
+			}
+			if slot >= 0 {
+				xpos, ypos := w.GetCursorPos()
+				winw, winh := w.GetSize()
+				aspect := float32(winw) / float32(winh)
+				println(int(xpos), int(ypos))
+				for m := range geom.Materials {
+					sz := float32(0.05)
+					px := 1.25 * 2 * sz * (float32(m) - float32(len(geom.Materials))/2)
+					py := 1 - 0.25*aspect
+					scale := sz
+					xMin, yMin := glToPixel(w, float64(px-scale), float64(py+scale*aspect))
+					xMax, yMax := glToPixel(w, float64(px+scale), float64(py-scale*aspect))
+					println(int(xMin), int(xMax), int(yMin), int(yMax))
+					if float64(xpos) >= xMin && float64(xpos) <= xMax && float64(ypos) >= yMin && float64(ypos) <= yMax {
+						player.hotBar[slot] = m
+					}
+				}
+			}
 		}
 		switch action {
 		case glfw.Press:
@@ -59,29 +111,44 @@ func keyCallback(player *person) func(w *glfw.Window, key glfw.Key, scancode int
 					player.downVel = player.walkVel
 				}
 			case glfw.Key1:
-				player.currentMaterial = 1
+				player.activeHotBarSlot = 0
 			case glfw.Key2:
-				player.currentMaterial = 2
+				player.activeHotBarSlot = 1
 			case glfw.Key3:
-				player.currentMaterial = 3
+				player.activeHotBarSlot = 2
 			case glfw.Key4:
-				player.currentMaterial = 4
+				player.activeHotBarSlot = 3
 			case glfw.Key5:
-				player.currentMaterial = 5
+				player.activeHotBarSlot = 4
 			case glfw.Key6:
-				player.currentMaterial = 6
+				player.activeHotBarSlot = 5
 			case glfw.Key7:
-				player.currentMaterial = 7
+				player.activeHotBarSlot = 6
 			case glfw.Key8:
-				player.currentMaterial = 8
+				player.activeHotBarSlot = 7
 			case glfw.Key9:
-				player.currentMaterial = 9
+				player.activeHotBarSlot = 8
 			case glfw.Key0:
-				player.currentMaterial = 10
+				player.activeHotBarSlot = 9
 			case glfw.KeyMinus:
-				player.currentMaterial = 11
+				player.activeHotBarSlot = 10
 			case glfw.KeyEqual:
-				player.currentMaterial = 12
+				player.activeHotBarSlot = 11
+			case glfw.KeyE:
+				if player.inInventory == false {
+					player.hotBarOn = true
+					player.inInventory = true
+					w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
+				} else {
+					player.inInventory = false
+					w.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
+				}
+			case glfw.KeyH:
+				if player.hotBarOn == false {
+					player.hotBarOn = true
+				} else {
+					player.hotBarOn = false
+				}
 			case glfw.KeyW:
 				player.forwardVel = player.walkVel
 			case glfw.KeyS:
@@ -156,7 +223,7 @@ func mouseButtonCallback(player *person, planetRen *planetRenderer) func(w *glfw
 						cell := planet.CellIndexToCell(cellIndex)
 						if cell != nil && cell.Material != geom.Air {
 							if prevCellIndex.Lon != -1 {
-								planetRen.setCellMaterial(prevCellIndex, player.currentMaterial)
+								planetRen.setCellMaterial(prevCellIndex, player.hotBar[player.activeHotBarSlot])
 							}
 							break
 						}

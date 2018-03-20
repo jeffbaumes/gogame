@@ -14,25 +14,28 @@ const (
 )
 
 type person struct {
-	upVel           float32
-	downVel         float32
-	forwardVel      float32
-	backVel         float32
-	rightVel        float32
-	leftVel         float32
-	walkVel         float32
-	fallVel         float32
-	loc             mgl32.Vec3
-	lookHeading     mgl32.Vec3
-	lookAltitude    float64
-	height          float64
-	radius          float64
-	gameMode        int
-	holdingJump     bool
-	inJump          bool
-	name            string
-	currentMaterial int
-	focusCellIndex  geom.CellIndex
+	upVel            float32
+	downVel          float32
+	forwardVel       float32
+	backVel          float32
+	rightVel         float32
+	leftVel          float32
+	walkVel          float32
+	fallVel          float32
+	loc              mgl32.Vec3
+	lookHeading      mgl32.Vec3
+	lookAltitude     float64
+	height           float64
+	radius           float64
+	gameMode         int
+	holdingJump      bool
+	inJump           bool
+	name             string
+	activeHotBarSlot int
+	focusCellIndex   geom.CellIndex
+	inInventory      bool
+	hotBarOn         bool
+	hotBar           [12]int
 }
 
 func newPerson(name string) *person {
@@ -44,7 +47,8 @@ func newPerson(name string) *person {
 	p.radius = 0.25
 	p.gameMode = normal
 	p.name = name
-	p.currentMaterial = geom.Grass
+	p.activeHotBarSlot = 0
+	p.hotBarOn = true
 	return &p
 }
 

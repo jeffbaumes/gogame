@@ -84,9 +84,7 @@ func Start(username, host string, port int) {
 
 		drawFrame(h, player, text, over, planetRen, peopleRen, focusRen, bar, window, timeOfDay)
 
-		if cursorGrabbed(window) {
-			player.updatePosition(h, planet)
-		}
+		player.updatePosition(h, planet)
 
 		if float64(time.Since(syncT))/float64(time.Second) > 0.05 {
 			syncT = time.Now()
