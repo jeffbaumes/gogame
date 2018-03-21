@@ -148,7 +148,7 @@ func NewText() *Text {
 	return &text
 }
 
-func (text *Text) computeGeometry(width, height int) {
+func (text *Text) computeGeometry(width, height int, where float32) {
 	sx := 2.0 / float32(width) * 12
 	sy := 2.0 / float32(height) * 12
 	points := []float32{}
@@ -162,8 +162,8 @@ func (text *Text) computeGeometry(width, height int) {
 		ay2 := 1.0 / 128.0 * float32(aInfo.y+aInfo.height)
 		x1 := -1 + sx*float32(line.x) + float32(i)*sx - sx*float32(aInfo.originX)/12
 		x2 := -1 + sx*float32(line.x) + float32(i)*sx + sx*float32(aInfo.width)/12 - sx*float32(aInfo.originX)/12
-		y1 := 1 - sy*float32(line.y) + -sy*float32(aInfo.originY)/12
-		y2 := 1 - sy*float32(line.y) + sy*float32(aInfo.height)/12 - sy*float32(aInfo.originY)/12
+		y1 := where - sy*float32(line.y) + -sy*float32(aInfo.originY)/12
+		y2 := where - sy*float32(line.y) + sy*float32(aInfo.height)/12 - sy*float32(aInfo.originY)/12
 		points = append(points, []float32{
 			x1, -y1, ax1, ay1,
 			x1, -y2, ax1, ay2,
@@ -180,9 +180,20 @@ func (text *Text) computeGeometry(width, height int) {
 
 // Draw draws the overlay text
 func (text *Text) Draw(player *common.Player, w *glfw.Window) {
+
+	wi, h := FramebufferSize(w)
+	if player.Intext == true {
+		text.statusLine.str = player.Text
+		text.computeGeometry(wi, h, 0.8)
+
+		gl.UseProgram(text.program)
+		gl.Uniform1i(text.textureUniform, text.textureUnit)
+		gl.BindVertexArray(text.drawableVAO)
+		gl.DrawArrays(gl.TRIANGLES, 0, 6*int32(text.charCount))
+	}
 	r, theta, phi := mgl32.CartesianToSpherical(player.Loc)
 	text.statusLine.str = fmt.Sprintf("LAT %v, LON %v, ALT %v", int(theta/math.Pi*180-90+0.5), int(phi/math.Pi*180+0.5), int(r+0.5))
-	text.computeGeometry(FramebufferSize(w))
+	text.computeGeometry(wi, h, 1)
 
 	gl.UseProgram(text.program)
 	gl.Uniform1i(text.textureUniform, text.textureUnit)

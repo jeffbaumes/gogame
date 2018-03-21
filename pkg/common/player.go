@@ -37,6 +37,8 @@ type Player struct {
 	HotbarOn         bool
 	Hotbar           [12]int
 	renderDistance   int
+	Intext           bool
+	Text             string
 }
 
 func NewPlayer(name string) *Player {

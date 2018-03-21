@@ -35,7 +35,19 @@ func glToPixel(w *glfw.Window, xpos, ypos float64) (xpix, ypix float64) {
 	winw, winh := w.GetSize()
 	return float64(winw) * (xpos + 1) / 2, float64(winh) * (-ypos + 1) / 2
 }
-
+func Sendtext(player *common.Player, text string) {
+	if text == "enter" {
+		player.Intext = false
+		player.Text = ""
+		// need to send text to server
+	} else if text == "delete" {
+		if len(player.Text) != 0 {
+			player.Text = player.Text[0:(len(player.Text) - 1)]
+		}
+	} else {
+		player.Text = player.Text + text
+	}
+}
 func keyCallback(player *common.Player) func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
 	return func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
 		if player.InInventory {
@@ -86,92 +98,189 @@ func keyCallback(player *common.Player) func(w *glfw.Window, key glfw.Key, scanc
 				}
 			}
 		}
-		switch action {
-		case glfw.Press:
-			switch key {
-			case glfw.KeySpace:
-				if player.GameMode == common.Normal {
-					player.HoldingJump = true
-				} else {
-					player.UpVel = player.WalkVel
-				}
-			case glfw.KeyLeftShift:
-				if player.GameMode == common.Flying {
-					player.DownVel = player.WalkVel
-				}
-			case glfw.Key1:
-				player.ActiveHotBarSlot = 0
-			case glfw.Key2:
-				player.ActiveHotBarSlot = 1
-			case glfw.Key3:
-				player.ActiveHotBarSlot = 2
-			case glfw.Key4:
-				player.ActiveHotBarSlot = 3
-			case glfw.Key5:
-				player.ActiveHotBarSlot = 4
-			case glfw.Key6:
-				player.ActiveHotBarSlot = 5
-			case glfw.Key7:
-				player.ActiveHotBarSlot = 6
-			case glfw.Key8:
-				player.ActiveHotBarSlot = 7
-			case glfw.Key9:
-				player.ActiveHotBarSlot = 8
-			case glfw.Key0:
-				player.ActiveHotBarSlot = 9
-			case glfw.KeyMinus:
-				player.ActiveHotBarSlot = 10
-			case glfw.KeyEqual:
-				player.ActiveHotBarSlot = 11
-			case glfw.KeyE:
-				if player.InInventory == false {
-					player.HotbarOn = true
-					player.InInventory = true
+		if player.Intext == false {
+			switch action {
+			case glfw.Press:
+				switch key {
+				case glfw.KeySpace:
+					if player.GameMode == common.Normal {
+						player.HoldingJump = true
+					} else {
+						player.UpVel = player.WalkVel
+					}
+				case glfw.KeyLeftShift:
+					if player.GameMode == common.Flying {
+						player.DownVel = player.WalkVel
+					}
+				case glfw.Key1:
+					player.ActiveHotBarSlot = 0
+				case glfw.Key2:
+					player.ActiveHotBarSlot = 1
+				case glfw.Key3:
+					player.ActiveHotBarSlot = 2
+				case glfw.Key4:
+					player.ActiveHotBarSlot = 3
+				case glfw.Key5:
+					player.ActiveHotBarSlot = 4
+				case glfw.Key6:
+					player.ActiveHotBarSlot = 5
+				case glfw.Key7:
+					player.ActiveHotBarSlot = 6
+				case glfw.Key8:
+					player.ActiveHotBarSlot = 7
+				case glfw.Key9:
+					player.ActiveHotBarSlot = 8
+				case glfw.Key0:
+					player.ActiveHotBarSlot = 9
+				case glfw.KeyMinus:
+					player.ActiveHotBarSlot = 10
+				case glfw.KeyEqual:
+					player.ActiveHotBarSlot = 11
+				case glfw.KeyE:
+					if player.InInventory == false {
+						player.HotbarOn = true
+						player.InInventory = true
+						w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
+					} else {
+						player.InInventory = false
+						w.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
+					}
+				case glfw.KeyT:
+					if player.Intext == true {
+						player.Intext = false
+					} else {
+						player.Intext = true
+					}
+				case glfw.KeyH:
+					if player.HotbarOn == false {
+						player.HotbarOn = true
+					} else {
+						player.HotbarOn = false
+					}
+				case glfw.KeyW:
+					player.ForwardVel = player.WalkVel
+				case glfw.KeyS:
+					player.BackVel = player.WalkVel
+				case glfw.KeyD:
+					player.RightVel = player.WalkVel
+				case glfw.KeyA:
+					player.LeftVel = player.WalkVel
+				case glfw.KeyM:
+					player.GameMode++
+					if player.GameMode >= common.NumGameModes {
+						player.GameMode = 0
+					}
+					if player.GameMode == common.Flying {
+						player.FallVel = 0
+					}
+				case glfw.KeyEscape:
 					w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
-				} else {
-					player.InInventory = false
-					w.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
 				}
-			case glfw.KeyH:
-				if player.HotbarOn == false {
-					player.HotbarOn = true
-				} else {
-					player.HotbarOn = false
+			case glfw.Release:
+				switch key {
+				case glfw.KeySpace:
+					player.HoldingJump = false
+					player.UpVel = 0
+				case glfw.KeyLeftShift:
+					player.DownVel = 0
+				case glfw.KeyW:
+					player.ForwardVel = 0
+				case glfw.KeyS:
+					player.BackVel = 0
+				case glfw.KeyD:
+					player.RightVel = 0
+				case glfw.KeyA:
+					player.LeftVel = 0
 				}
-			case glfw.KeyW:
-				player.ForwardVel = player.WalkVel
-			case glfw.KeyS:
-				player.BackVel = player.WalkVel
-			case glfw.KeyD:
-				player.RightVel = player.WalkVel
-			case glfw.KeyA:
-				player.LeftVel = player.WalkVel
-			case glfw.KeyM:
-				player.GameMode++
-				if player.GameMode >= common.NumGameModes {
-					player.GameMode = 0
-				}
-				if player.GameMode == common.Flying {
-					player.FallVel = 0
-				}
-			case glfw.KeyEscape:
-				w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 			}
-		case glfw.Release:
-			switch key {
-			case glfw.KeySpace:
-				player.HoldingJump = false
-				player.UpVel = 0
-			case glfw.KeyLeftShift:
-				player.DownVel = 0
-			case glfw.KeyW:
-				player.ForwardVel = 0
-			case glfw.KeyS:
-				player.BackVel = 0
-			case glfw.KeyD:
-				player.RightVel = 0
-			case glfw.KeyA:
-				player.LeftVel = 0
+		} else {
+			switch action {
+			case glfw.Press:
+				switch key {
+				case glfw.KeyEscape:
+					player.Intext = false
+				case glfw.Key1:
+					Sendtext(player, "1")
+				case glfw.Key2:
+					Sendtext(player, "2")
+				case glfw.Key3:
+					Sendtext(player, "3")
+				case glfw.Key4:
+					Sendtext(player, "4")
+				case glfw.Key5:
+					Sendtext(player, "5")
+				case glfw.Key6:
+					Sendtext(player, "6")
+				case glfw.Key7:
+					Sendtext(player, "7")
+				case glfw.Key8:
+					Sendtext(player, "8")
+				case glfw.Key9:
+					Sendtext(player, "9")
+				case glfw.Key0:
+					Sendtext(player, "0")
+				case glfw.KeyQ:
+					Sendtext(player, "q")
+				case glfw.KeyW:
+					Sendtext(player, "w")
+				case glfw.KeyE:
+					Sendtext(player, "e")
+				case glfw.KeyR:
+					Sendtext(player, "r")
+				case glfw.KeyT:
+					Sendtext(player, "t")
+				case glfw.KeyY:
+					Sendtext(player, "y")
+				case glfw.KeyU:
+					Sendtext(player, "u")
+				case glfw.KeyI:
+					Sendtext(player, "i")
+				case glfw.KeyO:
+					Sendtext(player, "o")
+				case glfw.KeyP:
+					Sendtext(player, "p")
+				case glfw.KeyA:
+					Sendtext(player, "a")
+				case glfw.KeyS:
+					Sendtext(player, "s")
+				case glfw.KeyD:
+					Sendtext(player, "d")
+				case glfw.KeyF:
+					Sendtext(player, "f")
+				case glfw.KeyG:
+					Sendtext(player, "g")
+				case glfw.KeyH:
+					Sendtext(player, "h")
+				case glfw.KeyJ:
+					Sendtext(player, "j")
+				case glfw.KeyK:
+					Sendtext(player, "k")
+				case glfw.KeyL:
+					Sendtext(player, "l")
+				case glfw.KeyZ:
+					Sendtext(player, "z")
+				case glfw.KeyX:
+					Sendtext(player, "x")
+				case glfw.KeyC:
+					Sendtext(player, "c")
+				case glfw.KeyV:
+					Sendtext(player, "v")
+				case glfw.KeyB:
+					Sendtext(player, "b")
+				case glfw.KeyN:
+					Sendtext(player, "n")
+				case glfw.KeyM:
+					Sendtext(player, "m")
+				case glfw.KeyEnter:
+					Sendtext(player, "enter")
+				case glfw.KeyDelete:
+					Sendtext(player, "delete")
+				case glfw.KeyBackspace:
+					Sendtext(player, "delete")
+				case glfw.KeySpace:
+					Sendtext(player, " ")
+
+				}
 			}
 		}
 	}
