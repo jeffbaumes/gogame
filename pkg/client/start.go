@@ -47,7 +47,14 @@ func Start(username, host string, port int) {
 	cRPC := rpc.NewClient(stream)
 
 	// Create planet
-	planet := common.NewPlanet(50.0, 16, 0, cRPC, nil)
+	planetId := 0
+	planetState := common.PlanetState{}
+	e = cRPC.Call("API.GetPlanetState", planetId, &planetState)
+	if e != nil {
+		panic(e)
+	}
+
+	planet := common.NewPlanet(planetState, cRPC, nil)
 	planetRen := scene.NewPlanet(planet)
 	over := scene.NewCrosshair()
 	text := scene.NewText()

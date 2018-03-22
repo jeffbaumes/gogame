@@ -19,9 +19,12 @@ const (
 
 // PlanetState is the serializable portion of a Planet
 type PlanetState struct {
-	AltMin, AltDelta, LatMax     float64
-	LonCells, LatCells, AltCells int
-	Seed                         int
+	Id       int
+	Name     string
+	Kind     int
+	Radius   float64
+	AltCells int
+	Seed     int
 }
 
 // Planet represents all the cells in a spherical planet
@@ -31,20 +34,25 @@ type Planet struct {
 	Chunks      map[ChunkIndex]*Chunk
 	ChunksMutex *sync.Mutex
 	noise       *opensimplex.Noise
+	AltMin      float64
+	AltDelta    float64
+	LatMax      float64
+	LonCells    int
+	LatCells    int
 	PlanetState
 }
 
 // NewPlanet constructs a Planet instance
-func NewPlanet(radius float64, altCells, seed int, crpc *rpc.Client, db *sql.DB) *Planet {
+func NewPlanet(state PlanetState, crpc *rpc.Client, db *sql.DB) *Planet {
 	p := Planet{}
-	p.Seed = seed
-	p.noise = opensimplex.NewWithSeed(int64(seed))
-	p.AltMin = radius - float64(altCells)
+	p.PlanetState = state
+	p.noise = opensimplex.NewWithSeed(int64(p.Seed))
+	p.AltCells = p.AltCells / ChunkSize * ChunkSize
+	p.AltMin = p.Radius - float64(p.AltCells)
 	p.AltDelta = 1.0
 	p.LatMax = 90.0
-	p.LonCells = int(2.0*math.Pi*3.0/4.0*radius+0.5) / ChunkSize * ChunkSize
-	p.LatCells = int(p.LatMax/90.0*math.Pi*radius) / ChunkSize * ChunkSize
-	p.AltCells = altCells / ChunkSize * ChunkSize
+	p.LonCells = int(2.0*math.Pi*3.0/4.0*p.Radius+0.5) / ChunkSize * ChunkSize
+	p.LatCells = int(p.LatMax/90.0*math.Pi*p.Radius) / ChunkSize * ChunkSize
 	p.Chunks = make(map[ChunkIndex]*Chunk)
 	p.rpc = crpc
 	p.db = db

@@ -113,7 +113,7 @@ func main() {
 		}
 	}
 	time.Sleep(1)
-	if play == "server" || play == "all" {
+	if play == "client" || play == "all" {
 		client.Start(name, host, port)
 	}
 }

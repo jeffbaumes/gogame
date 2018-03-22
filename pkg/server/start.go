@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 	"net/rpc"
-	"strconv"
 
 	"github.com/hashicorp/yamux"
 	"github.com/jeffbaumes/gogame/pkg/common"
@@ -26,15 +25,15 @@ func Start(name string, seed, port int) {
 	checkErr(err)
 	// defer db.Close()
 
-	stmt, err := db.Prepare("CREATE TABLE IF NOT EXISTS setting (name TEXT PRIMARY KEY, val TEXT)")
+	// stmt, err := db.Prepare("CREATE TABLE IF NOT EXISTS setting (name TEXT PRIMARY KEY, val TEXT)")
+	// checkErr(err)
+	// _, err = stmt.Exec()
+	// checkErr(err)
+	stmt, err := db.Prepare("CREATE TABLE IF NOT EXISTS chunk (planet INT, lon INT, lat INT, alt INT, data BLOB, PRIMARY KEY (planet, lat, lon, alt))")
 	checkErr(err)
 	_, err = stmt.Exec()
 	checkErr(err)
-	stmt, err = db.Prepare("CREATE TABLE IF NOT EXISTS chunk (planet INT, lon INT, lat INT, alt INT, data BLOB, PRIMARY KEY (planet, lat, lon, alt))")
-	checkErr(err)
-	_, err = stmt.Exec()
-	checkErr(err)
-	stmt, err = db.Prepare("CREATE TABLE IF NOT EXISTS planet (planet INT PRIMARY KEY, data BLOB)")
+	stmt, err = db.Prepare("CREATE TABLE IF NOT EXISTS planet (id INT PRIMARY KEY, name TEXT, kind INT, radius FLOAT, altcells INT, seed INT)")
 	checkErr(err)
 	_, err = stmt.Exec()
 	checkErr(err)
@@ -43,23 +42,27 @@ func Start(name string, seed, port int) {
 	_, err = stmt.Exec()
 	checkErr(err)
 
-	rows, err := db.Query("SELECT val FROM setting WHERE name = \"seed\"")
+	rows, err := db.Query("SELECT * FROM planet WHERE id = 0")
 	checkErr(err)
-	var val string
+
+	var val common.PlanetState
 	if rows.Next() {
 		err = rows.Scan(&val)
 		checkErr(err)
-		seed, err = strconv.Atoi(val)
-		checkErr(err)
 	} else {
-		stmt, err = db.Prepare("INSERT INTO setting VALUES (\"seed\",?)")
+		val.Id = 0
+		val.Name = "Spawn"
+		val.Kind = 0
+		val.Radius = 50.0
+		val.AltCells = 16
+		val.Seed = seed
+		stmt, err = db.Prepare("INSERT INTO planet VALUES (?,?,?,?,?,?)")
 		checkErr(err)
-		_, err = stmt.Exec(seed)
+		_, err = stmt.Exec(val.Id, val.Name, val.Kind, val.Radius, val.AltCells, val.Seed)
 		checkErr(err)
 	}
 	rows.Close()
-
-	p = common.NewPlanet(50.0, 16, seed, nil, db)
+	p = common.NewPlanet(val, nil, db)
 
 	api := new(API)
 	listener, e := net.Listen("tcp", fmt.Sprintf(":%v", port))

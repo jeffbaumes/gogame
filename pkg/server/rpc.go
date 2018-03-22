@@ -11,6 +11,12 @@ type API struct {
 	connectedPeople []*connectedPerson
 }
 
+// GetPlanetState returns the planet state
+func (api *API) GetPlanetState(args *int, state *common.PlanetState) error {
+	*state = p.PlanetState
+	return nil
+}
+
 // GetChunk returns the planet chunk for the given chunk coordinates
 func (api *API) GetChunk(args *common.ChunkIndex, chunk *common.Chunk) error {
 	c := p.GetChunk(*args)
