@@ -67,7 +67,7 @@ func Start(username, host string, port int) {
 	focusRen := scene.NewFocusCell()
 
 	window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
-	window.SetKeyCallback(keyCallback(player))
+	window.SetKeyCallback(keyCallback(player, cRPC))
 	window.SetCursorPosCallback(cursorPosCallback(player))
 	window.SetSizeCallback(windowSizeCallback)
 	window.SetMouseButtonCallback(mouseButtonCallback(player, planetRen))

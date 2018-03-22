@@ -7,4 +7,5 @@ type PlayerState struct {
 	Name     string
 	Position mgl32.Vec3
 	LookDir  mgl32.Vec3
+	SendText string
 }

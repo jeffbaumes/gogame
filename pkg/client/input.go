@@ -2,6 +2,7 @@ package client
 
 import (
 	"math"
+	"net/rpc"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
@@ -35,20 +36,26 @@ func glToPixel(w *glfw.Window, xpos, ypos float64) (xpix, ypix float64) {
 	winw, winh := w.GetSize()
 	return float64(winw) * (xpos + 1) / 2, float64(winh) * (-ypos + 1) / 2
 }
-func Sendtext(player *common.Player, text string) {
-	if text == "enter" {
-		player.Intext = false
-		player.Text = ""
-		// need to send text to server
-	} else if text == "delete" {
-		if len(player.Text) != 0 {
-			player.Text = player.Text[0:(len(player.Text) - 1)]
+
+func keyCallback(player *common.Player, crpc *rpc.Client) func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
+
+	Sendtext := func(text string) {
+		if text == "enter" {
+			player.Intext = false
+			// NewText()
+			var ret bool
+			crpc.Go("API.SendText", player.Text, &ret, nil)
+			player.Text = ""
+			// need to send text to server
+		} else if text == "delete" {
+			if len(player.Text) != 0 {
+				player.Text = player.Text[0:(len(player.Text) - 1)]
+			}
+		} else {
+			player.Text = player.Text + text
 		}
-	} else {
-		player.Text = player.Text + text
 	}
-}
-func keyCallback(player *common.Player) func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
+
 	return func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
 		if player.InInventory {
 			slot := -1
@@ -200,85 +207,85 @@ func keyCallback(player *common.Player) func(w *glfw.Window, key glfw.Key, scanc
 				case glfw.KeyEscape:
 					player.Intext = false
 				case glfw.Key1:
-					Sendtext(player, "1")
+					Sendtext("1")
 				case glfw.Key2:
-					Sendtext(player, "2")
+					Sendtext("2")
 				case glfw.Key3:
-					Sendtext(player, "3")
+					Sendtext("3")
 				case glfw.Key4:
-					Sendtext(player, "4")
+					Sendtext("4")
 				case glfw.Key5:
-					Sendtext(player, "5")
+					Sendtext("5")
 				case glfw.Key6:
-					Sendtext(player, "6")
+					Sendtext("6")
 				case glfw.Key7:
-					Sendtext(player, "7")
+					Sendtext("7")
 				case glfw.Key8:
-					Sendtext(player, "8")
+					Sendtext("8")
 				case glfw.Key9:
-					Sendtext(player, "9")
+					Sendtext("9")
 				case glfw.Key0:
-					Sendtext(player, "0")
+					Sendtext("0")
 				case glfw.KeyQ:
-					Sendtext(player, "q")
+					Sendtext("q")
 				case glfw.KeyW:
-					Sendtext(player, "w")
+					Sendtext("w")
 				case glfw.KeyE:
-					Sendtext(player, "e")
+					Sendtext("e")
 				case glfw.KeyR:
-					Sendtext(player, "r")
+					Sendtext("r")
 				case glfw.KeyT:
-					Sendtext(player, "t")
+					Sendtext("t")
 				case glfw.KeyY:
-					Sendtext(player, "y")
+					Sendtext("y")
 				case glfw.KeyU:
-					Sendtext(player, "u")
+					Sendtext("u")
 				case glfw.KeyI:
-					Sendtext(player, "i")
+					Sendtext("i")
 				case glfw.KeyO:
-					Sendtext(player, "o")
+					Sendtext("o")
 				case glfw.KeyP:
-					Sendtext(player, "p")
+					Sendtext("p")
 				case glfw.KeyA:
-					Sendtext(player, "a")
+					Sendtext("a")
 				case glfw.KeyS:
-					Sendtext(player, "s")
+					Sendtext("s")
 				case glfw.KeyD:
-					Sendtext(player, "d")
+					Sendtext("d")
 				case glfw.KeyF:
-					Sendtext(player, "f")
+					Sendtext("f")
 				case glfw.KeyG:
-					Sendtext(player, "g")
+					Sendtext("g")
 				case glfw.KeyH:
-					Sendtext(player, "h")
+					Sendtext("h")
 				case glfw.KeyJ:
-					Sendtext(player, "j")
+					Sendtext("j")
 				case glfw.KeyK:
-					Sendtext(player, "k")
+					Sendtext("k")
 				case glfw.KeyL:
-					Sendtext(player, "l")
+					Sendtext("l")
 				case glfw.KeyZ:
-					Sendtext(player, "z")
+					Sendtext("z")
 				case glfw.KeyX:
-					Sendtext(player, "x")
+					Sendtext("x")
 				case glfw.KeyC:
-					Sendtext(player, "c")
+					Sendtext("c")
 				case glfw.KeyV:
-					Sendtext(player, "v")
+					Sendtext("v")
 				case glfw.KeyB:
-					Sendtext(player, "b")
+					Sendtext("b")
 				case glfw.KeyN:
-					Sendtext(player, "n")
+					Sendtext("n")
 				case glfw.KeyM:
-					Sendtext(player, "m")
+					Sendtext("m")
 				case glfw.KeyEnter:
-					Sendtext(player, "enter")
+					Sendtext("enter")
 				case glfw.KeyDelete:
-					Sendtext(player, "delete")
+					Sendtext("delete")
 				case glfw.KeyBackspace:
-					Sendtext(player, "delete")
+					Sendtext("delete")
 				case glfw.KeySpace:
-					Sendtext(player, " ")
+					Sendtext(" ")
 
 				}
 			}

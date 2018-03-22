@@ -63,3 +63,10 @@ func (api *API) UpdatePersonState(state *common.PlayerState, ret *bool) error {
 	}
 	return nil
 }
+
+// SendText sends a player text
+func (api *API) SendText(text *string, ret *bool) error {
+	api.player.DrawText = *text
+	*ret = true
+	return nil
+}

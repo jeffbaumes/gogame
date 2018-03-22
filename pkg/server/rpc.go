@@ -40,6 +40,27 @@ func (api *API) UpdatePersonState(state *common.PlayerState, ret *bool) error {
 		validPeople = append(validPeople, c)
 	}
 	api.connectedPeople = validPeople
+	*ret = true
+	return nil
+}
+
+// SendText sends a text to all players
+func (api *API) SendText(text *string, ret *bool) error {
+	var validPeople []*connectedPerson
+	for _, c := range api.connectedPeople {
+		var r bool
+		e := c.rpc.Call("API.SendText", text, &r)
+		if e != nil {
+			if e.Error() == "connection is shut down" {
+				api.personDisconnected(c.state.Name)
+				continue
+			}
+			log.Println("UpdatePersonState error:", e)
+		}
+		validPeople = append(validPeople, c)
+	}
+	api.connectedPeople = validPeople
+	*ret = true
 	return nil
 }
 

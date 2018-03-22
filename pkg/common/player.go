@@ -39,6 +39,7 @@ type Player struct {
 	renderDistance   int
 	Intext           bool
 	Text             string
+	DrawText         string
 }
 
 func NewPlayer(name string) *Player {
