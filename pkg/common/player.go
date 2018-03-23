@@ -6,6 +6,7 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 )
 
+// Game modes
 const (
 	Normal       = iota
 	Flying       = iota
@@ -42,6 +43,7 @@ type Player struct {
 	DrawText         string
 }
 
+// NewPlayer creates a new player
 func NewPlayer(name string) *Player {
 	p := Player{}
 	p.WalkVel = 5.0
@@ -57,6 +59,7 @@ func NewPlayer(name string) *Player {
 	return &p
 }
 
+// LookDir returns the player's look direction
 func (player *Player) LookDir() mgl32.Vec3 {
 	up := player.Loc.Normalize()
 	player.lookHeading = ProjectToPlane(player.lookHeading, up).Normalize()
@@ -64,6 +67,7 @@ func (player *Player) LookDir() mgl32.Vec3 {
 	return mgl32.QuatRotate(float32((player.lookAltitude-90.0)*math.Pi/180.0), right).Rotate(up)
 }
 
+// Swivel swivels the player's direction based on mouse movement
 func (player *Player) Swivel(deltaX float64, deltaY float64) {
 	lookHeadingDelta := -0.1 * deltaX
 	normalDir := player.Loc.Normalize()
@@ -72,6 +76,7 @@ func (player *Player) Swivel(deltaX float64, deltaY float64) {
 	player.lookAltitude = math.Max(math.Min(player.lookAltitude, 89.9), -89.9)
 }
 
+// UpdatePosition updates the player position
 func (player *Player) UpdatePosition(h float32, planet *Planet) {
 	up := player.Loc.Normalize()
 	right := player.lookHeading.Cross(up)

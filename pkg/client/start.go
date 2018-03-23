@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-gl/glfw/v3.2/glfw"
+	"github.com/go-gl/mathgl/mgl32"
 	"github.com/hashicorp/yamux"
 	"github.com/jeffbaumes/gogame/pkg/client/scene"
 	"github.com/jeffbaumes/gogame/pkg/common"
@@ -28,8 +29,6 @@ func Start(username, host string, port int) {
 	defer glfw.Terminate()
 	initOpenGL()
 
-	player := common.NewPlayer(username)
-
 	conn, err := net.Dial("tcp", fmt.Sprintf("%v:%v", host, port))
 	if err != nil {
 		panic(err)
@@ -47,14 +46,16 @@ func Start(username, host string, port int) {
 	cRPC := rpc.NewClient(stream)
 
 	// Create planet
-	planetId := 0
+	planetID := 0
 	planetState := common.PlanetState{}
-	e = cRPC.Call("API.GetPlanetState", planetId, &planetState)
+	e = cRPC.Call("API.GetPlanetState", planetID, &planetState)
 	if e != nil {
 		panic(e)
 	}
 
 	planet := common.NewPlanet(planetState, cRPC, nil)
+	player := common.NewPlayer(username)
+	player.Loc = mgl32.Vec3{float32(planetState.Radius) + float32(planetState.AltCells), 0, 0}
 	planetRen := scene.NewPlanet(planet)
 	over := scene.NewCrosshair()
 	text := scene.NewText()

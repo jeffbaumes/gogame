@@ -19,7 +19,7 @@ const (
 
 // PlanetState is the serializable portion of a Planet
 type PlanetState struct {
-	Id       int
+	ID       int
 	Name     string
 	Kind     int
 	Radius   float64

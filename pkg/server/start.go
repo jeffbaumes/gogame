@@ -47,18 +47,18 @@ func Start(name string, seed, port int) {
 
 	var val common.PlanetState
 	if rows.Next() {
-		err = rows.Scan(&val)
+		err = rows.Scan(&val.ID, &val.Name, &val.Kind, &val.Radius, &val.AltCells, &val.Seed)
 		checkErr(err)
 	} else {
-		val.Id = 0
+		val.ID = 0
 		val.Name = "Spawn"
 		val.Kind = 0
-		val.Radius = 50.0
+		val.Radius = 100.0
 		val.AltCells = 16
 		val.Seed = seed
 		stmt, err = db.Prepare("INSERT INTO planet VALUES (?,?,?,?,?,?)")
 		checkErr(err)
-		_, err = stmt.Exec(val.Id, val.Name, val.Kind, val.Radius, val.AltCells, val.Seed)
+		_, err = stmt.Exec(val.ID, val.Name, val.Kind, val.Radius, val.AltCells, val.Seed)
 		checkErr(err)
 	}
 	rows.Close()
