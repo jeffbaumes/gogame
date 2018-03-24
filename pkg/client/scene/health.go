@@ -1,6 +1,8 @@
 package scene
 
 import (
+	"log"
+
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/jeffbaumes/gogame/pkg/common"
@@ -53,7 +55,8 @@ func NewHealth() *Health {
 	h.pointsVBO = newVBO()
 	h.drawableVAO = newPointsVAO(h.pointsVBO, 4)
 
-	rgba := LoadImage("textures/health.png")
+	rgba, col := LoadImages([]string{"textures/health.png", "textures/health-empty.png"}, 16)
+	log.Println(col)
 	h.textureUnit = 4
 	gl.ActiveTexture(uint32(gl.TEXTURE0 + h.textureUnit))
 	gl.GenTextures(1, &h.texture)
@@ -85,17 +88,21 @@ func (h *Health) computeGeometry(player *common.Player, width, height int) {
 	sq := []float32{-1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1}
 	points := []float32{}
 	sz := float32(0.02)
-	for m := 0; m < player.Health; m++ {
-		px := 1.25 * 2 * sz * (float32(m+1) - float32(player.Health)/2)
+	for m := 0; m < common.MaxHealth; m++ {
+		px := 1.25 * 2 * sz * (float32(m+1) - float32(common.MaxHealth)/2)
 		py := -1 + 0.1*aspect
 		scale := sz
 		pts := make([]float32, 2*len(sq))
+		tx := float32(0)
+		if m >= player.Health {
+			tx = 0.5
+		}
 		for i := 0; i < len(sq); i += 2 {
 			pts = append(pts, []float32{
 				px + sq[i+0]*scale,
 				py + sq[i+1]*scale*aspect,
-				(sq[i+0] + 1) / 2,
-				1 - (sq[i+1]+1)/2,
+				tx + 0.5*(sq[i+0]+1)/2,
+				0.5 - 0.5*(sq[i+1]+1)/2,
 			}...)
 		}
 		points = append(points, pts...)

@@ -1,6 +1,9 @@
 package client
 
 import (
+	"fmt"
+	"log"
+
 	"github.com/jeffbaumes/gogame/pkg/client/scene"
 	"github.com/jeffbaumes/gogame/pkg/common"
 )
@@ -67,6 +70,14 @@ func (api *API) UpdatePersonState(state *common.PlayerState, ret *bool) error {
 // SendText sends a player text
 func (api *API) SendText(text *string, ret *bool) error {
 	api.player.DrawText = *text
+	*ret = true
+	return nil
+}
+
+// HitPlayer damages a player
+func (api *API) HitPlayer(args *common.HitPlayerArgs, ret *bool) error {
+	log.Println(fmt.Sprintf("Hit by %v", args.From))
+	api.player.UpdateHealth(-args.Amount)
 	*ret = true
 	return nil
 }

@@ -13,6 +13,11 @@ const (
 	NumGameModes = iota
 )
 
+// Maximum health
+const (
+	MaxHealth = 10
+)
+
 // Player represents a player of the game
 type Player struct {
 	Planet           *Planet
@@ -45,6 +50,13 @@ type Player struct {
 	DrawText         string
 }
 
+// HitPlayerArgs are the arguments for the HitPlayer API call
+type HitPlayerArgs struct {
+	From   string
+	Target string
+	Amount int
+}
+
 // NewPlayer creates a new player
 func NewPlayer(name string, planet *Planet) *Player {
 	p := Player{}
@@ -65,7 +77,7 @@ func NewPlayer(name string, planet *Planet) *Player {
 func (player *Player) Spawn() {
 	player.Loc = mgl32.Vec3{float32(player.Planet.Radius) + float32(player.Planet.AltCells), 0, 0}
 	player.lookHeading = mgl32.Vec3{0, 1, 0}
-	player.Health = 10
+	player.Health = MaxHealth
 	player.UpVel = 0
 	player.DownVel = 0
 	player.ForwardVel = 0
@@ -76,6 +88,17 @@ func (player *Player) Spawn() {
 
 	// Make sure the spawn area is ready (not async)
 	player.LoadNearbyChunks(false)
+}
+
+// UpdateHealth updates a player health by a certain amount
+func (player *Player) UpdateHealth(amount int) {
+	player.Health += amount
+	if player.Health <= 0 {
+		player.Spawn()
+	}
+	if player.Health > MaxHealth {
+		player.Health = MaxHealth
+	}
 }
 
 // LookDir returns the player's look direction

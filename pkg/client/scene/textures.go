@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/draw"
 	"image/png"
+	"math"
 	"os"
 
 	"github.com/jeffbaumes/gogame/pkg/common"
@@ -44,4 +45,25 @@ func LoadImage(path string) *image.RGBA {
 	draw.Draw(rgba, image.Rect(0, 0, 16, 16), img, image.Pt(0, 0), draw.Src)
 	ImageFile.Close()
 	return rgba
+}
+
+// LoadImages load images into a larger texture
+func LoadImages(paths []string, size int) (rgba *image.RGBA, columns int) {
+	columns = int(math.Ceil(math.Sqrt(float64(len(paths)))))
+	rgba = image.NewRGBA(image.Rect(0, 0, columns*size, columns*size))
+	for x := 0; x < len(paths); x++ {
+		ImageFile, err := os.Open(paths[x])
+		if err != nil {
+			panic(err)
+		}
+		img, err := png.Decode(ImageFile)
+		if err != nil {
+			panic(err)
+		}
+		sx := (x % columns) * size
+		sy := (x / columns) * size
+		draw.Draw(rgba, image.Rect(sx, sy, sx+size, sy+size), img, image.Pt(0, 0), draw.Src)
+		ImageFile.Close()
+	}
+	return
 }

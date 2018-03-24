@@ -1,6 +1,8 @@
 package client
 
 import (
+	"fmt"
+	"log"
 	"math"
 	"net/rpc"
 
@@ -301,7 +303,7 @@ func windowSizeCallback(w *glfw.Window, wd, ht int) {
 	gl.Viewport(0, 0, int32(fwidth), int32(fheight))
 }
 
-func mouseButtonCallback(player *common.Player, planetRen *scene.Planet) func(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
+func mouseButtonCallback(player *common.Player, planetRen *scene.Planet, connectedPlayers *[]*common.PlayerState, crpc *rpc.Client) func(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
 	return func(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
 		planet := planetRen.Planet
 		if cursorGrabbed(w) {
@@ -311,6 +313,19 @@ func mouseButtonCallback(player *common.Player, planetRen *scene.Planet) func(w 
 				for i := 0; i < 100; i++ {
 					pos = pos.Add(increment)
 					cell := planet.CartesianToCell(pos)
+					hitPlayer := false
+					for _, otherPlayer := range *connectedPlayers {
+						if pos.Sub(otherPlayer.Position).Len() < 0.6 {
+							log.Println(fmt.Sprintf("Hit %v", otherPlayer.Name))
+							var ret bool
+							crpc.Go("API.HitPlayer", common.HitPlayerArgs{From: player.Name, Target: otherPlayer.Name, Amount: 1}, &ret, nil)
+							hitPlayer = true
+							break
+						}
+					}
+					if hitPlayer {
+						break
+					}
 					if cell != nil && cell.Material != common.Air {
 						cellIndex := planet.CartesianToCellIndex(pos)
 						planetRen.SetCellMaterial(cellIndex, common.Air)

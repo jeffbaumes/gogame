@@ -70,6 +70,28 @@ func (api *API) SendText(text *string, ret *bool) error {
 	return nil
 }
 
+// HitPlayer damages a person
+func (api *API) HitPlayer(args *common.HitPlayerArgs, ret *bool) error {
+	var validPeople []*connectedPerson
+	for _, c := range api.connectedPeople {
+		if c.state.Name == args.Target {
+			var r bool
+			e := c.rpc.Call("API.HitPlayer", args, &r)
+			if e != nil {
+				if e.Error() == "connection is shut down" {
+					api.personDisconnected(c.state.Name)
+					continue
+				}
+				log.Println("HitPlayer error:", e)
+			}
+		}
+		validPeople = append(validPeople, c)
+	}
+	api.connectedPeople = validPeople
+	*ret = true
+	return nil
+}
+
 // SetCellMaterial sets the material for a particular cell
 func (api *API) SetCellMaterial(args *common.RPCSetCellMaterialArgs, ret *bool) error {
 	*ret = p.SetCellMaterial(args.Index, args.Material)

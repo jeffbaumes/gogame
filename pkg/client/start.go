@@ -77,7 +77,7 @@ func Start(username, host string, port int) {
 	window.SetKeyCallback(keyCallback(player, cRPC))
 	window.SetCursorPosCallback(cursorPosCallback(player))
 	window.SetSizeCallback(windowSizeCallback)
-	window.SetMouseButtonCallback(mouseButtonCallback(player, planetRen))
+	window.SetMouseButtonCallback(mouseButtonCallback(player, planetRen, &clientAPI.connectedPeople, cRPC))
 
 	startTime := time.Now()
 	t := startTime
