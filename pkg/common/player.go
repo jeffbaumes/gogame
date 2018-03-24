@@ -15,14 +15,15 @@ const (
 
 // Player represents a player of the game
 type Player struct {
+	Planet           *Planet
 	UpVel            float32
 	DownVel          float32
 	ForwardVel       float32
 	BackVel          float32
 	RightVel         float32
 	LeftVel          float32
-	WalkVel          float32
 	FallVel          float32
+	WalkVel          float32
 	Loc              mgl32.Vec3
 	lookHeading      mgl32.Vec3
 	lookAltitude     float64
@@ -38,17 +39,16 @@ type Player struct {
 	HotbarOn         bool
 	Hotbar           [12]int
 	renderDistance   int
+	Health           int
 	Intext           bool
 	Text             string
 	DrawText         string
 }
 
 // NewPlayer creates a new player
-func NewPlayer(name string) *Player {
+func NewPlayer(name string, planet *Planet) *Player {
 	p := Player{}
 	p.WalkVel = 5.0
-	p.Loc = mgl32.Vec3{60, 0, 0}
-	p.lookHeading = mgl32.Vec3{0, 1, 0}
 	p.height = 2
 	p.radius = 0.25
 	p.GameMode = Normal
@@ -56,7 +56,26 @@ func NewPlayer(name string) *Player {
 	p.ActiveHotBarSlot = 0
 	p.HotbarOn = true
 	p.renderDistance = 4
+	p.Planet = planet
+	p.Spawn()
 	return &p
+}
+
+// Spawn the player on their current planet spawn
+func (player *Player) Spawn() {
+	player.Loc = mgl32.Vec3{float32(player.Planet.Radius) + float32(player.Planet.AltCells), 0, 0}
+	player.lookHeading = mgl32.Vec3{0, 1, 0}
+	player.Health = 10
+	player.UpVel = 0
+	player.DownVel = 0
+	player.ForwardVel = 0
+	player.BackVel = 0
+	player.RightVel = 0
+	player.LeftVel = 0
+	player.FallVel = 0
+
+	// Make sure the spawn area is ready (not async)
+	player.LoadNearbyChunks(false)
 }
 
 // LookDir returns the player's look direction
@@ -76,33 +95,42 @@ func (player *Player) Swivel(deltaX float64, deltaY float64) {
 	player.lookAltitude = math.Max(math.Min(player.lookAltitude, 89.9), -89.9)
 }
 
+// LoadNearbyChunks loads the chunks around the player, either synchronously or asynchronously
+func (player *Player) LoadNearbyChunks(async bool) {
+	planet := player.Planet
+	up := player.Loc.Normalize()
+	feet := player.Loc.Sub(up.Mul(float32(player.height)))
+	ind := planet.CartesianToChunkIndex(feet)
+	for lon := ind.Lon - player.renderDistance; lon <= ind.Lon+player.renderDistance; lon++ {
+		validLon := lon
+		for validLon < 0 {
+			validLon += planet.LonCells / ChunkSize
+		}
+		for validLon >= planet.LonCells/ChunkSize {
+			validLon -= planet.LonCells / ChunkSize
+		}
+		latMin := Max(ind.Lat-player.renderDistance, 0)
+		latMax := Min(ind.Lat+player.renderDistance, planet.LatCells/ChunkSize-1)
+		for lat := latMin; lat <= latMax; lat++ {
+			for alt := 0; alt < planet.AltCells/ChunkSize; alt++ {
+				planet.GetChunk(ChunkIndex{Lon: validLon, Lat: lat, Alt: alt}, async)
+			}
+		}
+	}
+}
+
 // UpdatePosition updates the player position
 func (player *Player) UpdatePosition(h float32, planet *Planet) {
+	player.LoadNearbyChunks(true)
+	if h > 0.05 {
+		h = 0.05
+	}
+
 	up := player.Loc.Normalize()
 	right := player.lookHeading.Cross(up)
 	if player.GameMode == Normal {
 		feet := player.Loc.Sub(up.Mul(float32(player.height)))
 		feetCell := planet.CartesianToCell(feet)
-
-		ind := planet.CartesianToChunkIndex(feet)
-
-		for lon := ind.Lon - player.renderDistance; lon <= ind.Lon+player.renderDistance; lon++ {
-			validLon := lon
-			for validLon < 0 {
-				validLon += planet.LonCells / ChunkSize
-			}
-			for validLon >= planet.LonCells/ChunkSize {
-				validLon -= planet.LonCells / ChunkSize
-			}
-			latMin := Max(ind.Lat-player.renderDistance, 0)
-			latMax := Min(ind.Lat+player.renderDistance, planet.LatCells/ChunkSize-1)
-			for lat := latMin; lat <= latMax; lat++ {
-				for alt := 0; alt < planet.AltCells/ChunkSize; alt++ {
-					planet.GetChunk(ChunkIndex{Lon: validLon, Lat: lat, Alt: alt})
-				}
-			}
-		}
-
 		falling := feetCell == nil || feetCell.Material == Air
 		if falling {
 			player.FallVel -= 20 * h

@@ -57,6 +57,9 @@ func keyCallback(player *common.Player, crpc *rpc.Client) func(w *glfw.Window, k
 	}
 
 	return func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
+		if action == glfw.Press && key == glfw.KeyO {
+			player.Spawn()
+		}
 		if player.InInventory {
 			slot := -1
 			switch action {

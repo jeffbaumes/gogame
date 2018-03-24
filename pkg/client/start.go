@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/go-gl/glfw/v3.2/glfw"
-	"github.com/go-gl/mathgl/mgl32"
 	"github.com/hashicorp/yamux"
 	"github.com/jeffbaumes/gogame/pkg/client/scene"
 	"github.com/jeffbaumes/gogame/pkg/common"
@@ -54,12 +53,12 @@ func Start(username, host string, port int) {
 	}
 
 	planet := common.NewPlanet(planetState, cRPC, nil)
-	player := common.NewPlayer(username)
-	player.Loc = mgl32.Vec3{float32(planetState.Radius) + float32(planetState.AltCells), 0, 0}
+	player := common.NewPlayer(username, planet)
 	planetRen := scene.NewPlanet(planet)
 	over := scene.NewCrosshair()
 	text := scene.NewText()
 	bar := scene.NewHotbar()
+	health := scene.NewHealth()
 
 	// Setup server connection
 	smuxConn, e := cmux.Accept()
@@ -90,7 +89,7 @@ func Start(username, host string, port int) {
 		elapsedSeconds := float64(time.Since(startTime)) / float64(time.Second)
 		_, timeOfDay := math.Modf(elapsedSeconds / secondsPerDay)
 
-		drawFrame(h, player, text, over, planetRen, peopleRen, focusRen, bar, window, timeOfDay)
+		drawFrame(h, player, text, over, planetRen, peopleRen, focusRen, bar, health, window, timeOfDay)
 
 		player.UpdatePosition(h, planet)
 

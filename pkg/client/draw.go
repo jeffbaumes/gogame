@@ -47,7 +47,7 @@ func initOpenGL() {
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 }
 
-func drawFrame(h float32, player *common.Player, text *scene.Text, over *scene.Crosshair, planetRen *scene.Planet, peopleRen *scene.Players, focusRen *scene.FocusCell, bar *scene.Hotbar, window *glfw.Window, timeOfDay float64) {
+func drawFrame(h float32, player *common.Player, text *scene.Text, over *scene.Crosshair, planetRen *scene.Planet, peopleRen *scene.Players, focusRen *scene.FocusCell, bar *scene.Hotbar, health *scene.Health, window *glfw.Window, timeOfDay float64) {
 	sunAngle := timeOfDay * math.Pi * 2
 	sunDir := mgl32.Vec3{float32(math.Sin(sunAngle)), float32(math.Cos(sunAngle)), 0}
 	vpnDotSun := float64(player.Loc.Normalize().Dot(sunDir))
@@ -78,6 +78,7 @@ func drawFrame(h float32, player *common.Player, text *scene.Text, over *scene.C
 	over.Draw(window)
 	text.Draw(player, window)
 	bar.Draw(player, window)
+	health.Draw(player, window)
 
 	glfw.PollEvents()
 	window.SwapBuffers()

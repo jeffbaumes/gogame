@@ -75,8 +75,8 @@ type CellLoc struct {
 	Lon, Lat, Alt float32
 }
 
-// GetChunk retrieves the chunk of a planet from chunk indices
-func (p *Planet) GetChunk(ind ChunkIndex) *Chunk {
+// GetChunk retrieves the chunk of a planet from chunk indices, either synchronously or asynchronously
+func (p *Planet) GetChunk(ind ChunkIndex, async bool) *Chunk {
 	cs := ChunkSize
 	if ind.Lon < 0 || ind.Lon >= p.LonCells/cs {
 		return nil
@@ -147,16 +147,26 @@ func (p *Planet) GetChunk(ind ChunkIndex) *Chunk {
 			}
 		} else {
 			rchunk := Chunk{}
-			call := p.rpc.Go("API.GetChunk", ind, &rchunk, nil)
-			go func() {
-				call = <-call.Done
+			if async {
+				call := p.rpc.Go("API.GetChunk", ind, &rchunk, nil)
+				go func() {
+					call = <-call.Done
+					p.ChunksMutex.Lock()
+					p.Chunks[ind] = &rchunk
+					p.ChunksMutex.Unlock()
+				}()
+				p.ChunksMutex.Lock()
+				p.Chunks[ind] = &Chunk{WaitingForData: true}
+				p.ChunksMutex.Unlock()
+			} else {
+				e := p.rpc.Call("API.GetChunk", ind, &rchunk)
+				if e != nil {
+					panic(e)
+				}
 				p.ChunksMutex.Lock()
 				p.Chunks[ind] = &rchunk
 				p.ChunksMutex.Unlock()
-			}()
-			p.ChunksMutex.Lock()
-			p.Chunks[ind] = &Chunk{WaitingForData: true}
-			p.ChunksMutex.Unlock()
+			}
 		}
 	}
 	return chunk
@@ -235,7 +245,7 @@ func (p *Planet) CellIndexToChunk(cellIndex CellIndex) *Chunk {
 	if ind.Alt < 0 || ind.Alt >= p.AltCells/ChunkSize {
 		return nil
 	}
-	return p.GetChunk(ind)
+	return p.GetChunk(ind, true)
 }
 
 // CellLocToChunkIndex converts floating-point cell indices to a chunk index

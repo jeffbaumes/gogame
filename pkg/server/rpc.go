@@ -19,7 +19,7 @@ func (api *API) GetPlanetState(args *int, state *common.PlanetState) error {
 
 // GetChunk returns the planet chunk for the given chunk coordinates
 func (api *API) GetChunk(args *common.ChunkIndex, chunk *common.Chunk) error {
-	c := p.GetChunk(*args)
+	c := p.GetChunk(*args, false)
 	if c != nil {
 		*chunk = *c
 	}

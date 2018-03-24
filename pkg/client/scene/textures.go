@@ -29,3 +29,19 @@ func LoadTextures() *image.RGBA {
 	}
 	return rgba
 }
+
+// LoadImage loads an image
+func LoadImage(path string) *image.RGBA {
+	rgba := image.NewRGBA(image.Rect(0, 0, 16, 16))
+	ImageFile, err := os.Open(path)
+	if err != nil {
+		panic(err)
+	}
+	img, err := png.Decode(ImageFile)
+	if err != nil {
+		panic(err)
+	}
+	draw.Draw(rgba, image.Rect(0, 0, 16, 16), img, image.Pt(0, 0), draw.Src)
+	ImageFile.Close()
+	return rgba
+}
