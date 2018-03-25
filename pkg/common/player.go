@@ -78,7 +78,6 @@ func NewPlayer(name string, planet *Planet) *Player {
 
 // Spawn the player on their current planet spawn
 func (player *Player) Spawn() {
-	player.Loc = mgl32.Vec3{float32(player.Planet.Radius) + float32(player.Planet.AltCells), 0, 0}
 	player.lookHeading = mgl32.Vec3{0, 1, 0}
 	player.Health = MaxHealth
 	player.UpVel = 0
@@ -88,9 +87,20 @@ func (player *Player) Spawn() {
 	player.RightVel = 0
 	player.LeftVel = 0
 	player.FallVel = 0
+	loc := mgl32.Vec3{float32(player.Planet.Radius) + 5, 0, 0}
+	player.Loc = loc
 
 	// Make sure the spawn area is ready (not async)
 	player.LoadNearbyChunks(false)
+
+	// Find a non-air place to land
+	c := player.Planet.CartesianToCell(loc)
+	for (c == nil || c.Material == Air) && loc[0] > 0 {
+		loc[0]--
+		c = player.Planet.CartesianToCell(loc)
+	}
+	loc[0] += 5
+	player.Loc = loc
 }
 
 // UpdateHealth updates a player health by a certain amount

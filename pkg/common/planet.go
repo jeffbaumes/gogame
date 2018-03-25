@@ -280,6 +280,11 @@ func (p *Planet) CellLocToCellIndex(l CellLoc) CellIndex {
 	return CellIndex{Lon: int(l.Lon), Lat: int(l.Lat), Alt: int(l.Alt)}
 }
 
+// CellIndexToCellLoc converts a cell index to floating-point cell indices
+func (p *Planet) CellIndexToCellLoc(l CellIndex) CellLoc {
+	return CellLoc{Lon: float32(l.Lon), Lat: float32(l.Lat), Alt: float32(l.Alt)}
+}
+
 // CartesianToChunkIndex converts world coordinates to a chunk index
 func (p *Planet) CartesianToChunkIndex(cart mgl32.Vec3) ChunkIndex {
 	l := p.CartesianToCellLoc(cart)
@@ -350,6 +355,12 @@ func (p *Planet) CartesianToCell(cart mgl32.Vec3) *Cell {
 func (p *Planet) CartesianToCellLoc(cart mgl32.Vec3) CellLoc {
 	r, theta, phi := mgl32.CartesianToSpherical(cart)
 	return p.SphericalToCellLoc(r, theta, phi)
+}
+
+// CellIndexToCartesian converts a cell index to world coordinates
+func (p *Planet) CellIndexToCartesian(ind CellIndex) mgl32.Vec3 {
+	loc := p.CellIndexToCellLoc(ind)
+	return p.CellLocToCartesian(loc)
 }
 
 // CellLocToCartesian converts floating-point cell indices to world coordinates
@@ -424,14 +435,18 @@ func newChunk(ind ChunkIndex, p *Planet) *Chunk {
 				// }
 
 				// Planet with rings
-				// scale := 1.0
-				// n := p.noise.Eval2(float64(l.Alt)*scale, 0)
-				// fracHeight := float64(l.Alt) / float64(p.AltCells)
-				// if fracHeight < 0.5 {
-				// 	c.Material = BlueBlock
-				// } else if fracHeight > 0.6 && n > -0.1 && int(l.Lat) == p.LatCells/2 {
-				// 	c.Material = YellowBlock
-				// }
+				scale := 1.0
+				n := p.noise.Eval2(float64(l.Alt)*scale, 0)
+				fracHeight := float64(l.Alt) / float64(p.AltCells)
+				if fracHeight < 0.5 {
+					c.Material = Grass
+				} else if fracHeight > 0.6 && int(l.Lat) == p.LatCells/2 {
+					if n > 0.1 {
+						c.Material = YellowBlock
+					} else {
+						c.Material = RedBlock
+					}
+				}
 
 				// Classic planet
 				// pos := p.CellLocToCartesian(l).Normalize().Mul(float32(p.AltCells / 2))
@@ -450,10 +465,15 @@ func newChunk(ind ChunkIndex, p *Planet) *Chunk {
 				// }
 
 				// Cavey planet 2
-				pos := p.CellLocToCartesian(l)
-				const scale = 0.05
-				noise := p.noise.Eval3(float64(pos[0])*scale, float64(pos[1])*scale, float64(pos[2])*scale)
-				if noise > 0.5 || l.Alt < 1 {
+				// pos := p.CellLocToCartesian(l)
+				// const scale = 0.05
+				// noise := p.noise.Eval3(float64(pos[0])*scale, float64(pos[1])*scale, float64(pos[2])*scale)
+				// if noise > 0.5 {
+				// 	c.Material = Stone
+				// }
+
+				// Always give the planet a solid core
+				if l.Alt < 1 {
 					c.Material = Stone
 				}
 
