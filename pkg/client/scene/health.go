@@ -1,8 +1,6 @@
 package scene
 
 import (
-	"log"
-
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/jeffbaumes/gogame/pkg/common"
@@ -55,8 +53,7 @@ func NewHealth() *Health {
 	h.pointsVBO = newVBO()
 	h.drawableVAO = newPointsVAO(h.pointsVBO, 4)
 
-	rgba, col := LoadImages([]string{"textures/health.png", "textures/health-empty.png"}, 16)
-	log.Println(col)
+	rgba, _ := LoadImages([]string{"textures/health.png", "textures/health-empty.png"}, 16)
 	h.textureUnit = 4
 	gl.ActiveTexture(uint32(gl.TEXTURE0 + h.textureUnit))
 	gl.GenTextures(1, &h.texture)

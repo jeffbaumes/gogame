@@ -115,13 +115,15 @@ func keyCallback(player *common.Player, crpc *rpc.Client) func(w *glfw.Window, k
 			case glfw.Press:
 				switch key {
 				case glfw.KeySpace:
-					if player.GameMode == common.Normal {
-						player.HoldingJump = true
-					} else {
-						player.UpVel = player.WalkVel
+					if cursorGrabbed(w) {
+						if player.GameMode == common.Normal {
+							player.HoldingJump = true
+						} else {
+							player.UpVel = player.WalkVel
+						}
 					}
 				case glfw.KeyLeftShift:
-					if player.GameMode == common.Flying {
+					if cursorGrabbed(w) && player.GameMode == common.Flying {
 						player.DownVel = player.WalkVel
 					}
 				case glfw.Key1:

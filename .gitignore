@@ -2,3 +2,4 @@ main
 *.db
 .DS_Store
 textures.png
+worlds
