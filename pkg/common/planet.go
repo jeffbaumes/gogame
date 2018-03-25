@@ -29,16 +29,17 @@ type PlanetState struct {
 
 // Planet represents all the cells in a spherical planet
 type Planet struct {
-	rpc         *rpc.Client
-	db          *sql.DB
-	Chunks      map[ChunkIndex]*Chunk
-	ChunksMutex *sync.Mutex
-	noise       *opensimplex.Noise
-	AltMin      float64
-	AltDelta    float64
-	LatMax      float64
-	LonCells    int
-	LatCells    int
+	rpc           *rpc.Client
+	db            *sql.DB
+	Chunks        map[ChunkIndex]*Chunk
+	databaseMutex *sync.Mutex
+	ChunksMutex   *sync.Mutex
+	noise         *opensimplex.Noise
+	AltMin        float64
+	AltDelta      float64
+	LatMax        float64
+	LonCells      int
+	LatCells      int
 	PlanetState
 }
 
@@ -56,6 +57,7 @@ func NewPlanet(state PlanetState, crpc *rpc.Client, db *sql.DB) *Planet {
 	p.Chunks = make(map[ChunkIndex]*Chunk)
 	p.rpc = crpc
 	p.db = db
+	p.databaseMutex = &sync.Mutex{}
 	p.ChunksMutex = &sync.Mutex{}
 	return &p
 }
@@ -98,6 +100,7 @@ func (p *Planet) GetChunk(ind ChunkIndex, async bool) *Chunk {
 	if chunk == nil {
 		if p.rpc == nil {
 			if p.db != nil {
+				p.databaseMutex.Lock()
 				rows, e := p.db.Query("SELECT data FROM chunk WHERE planet = 0 AND lon = ? AND lat = ? AND alt = ?", ind.Lon, ind.Lat, ind.Alt)
 				if e != nil {
 					panic(e)
@@ -119,8 +122,10 @@ func (p *Planet) GetChunk(ind ChunkIndex, async bool) *Chunk {
 					chunk = &ch
 				}
 				rows.Close()
+				p.databaseMutex.Unlock()
 				if chunk == nil {
 					chunk = newChunk(ind, p)
+					p.databaseMutex.Lock()
 					stmt, e := p.db.Prepare("INSERT INTO chunk VALUES (?, ?, ?, ?, ?)")
 					if e != nil {
 						panic(e)
@@ -135,6 +140,7 @@ func (p *Planet) GetChunk(ind ChunkIndex, async bool) *Chunk {
 					if e != nil {
 						panic(e)
 					}
+					p.databaseMutex.Unlock()
 				}
 				p.ChunksMutex.Lock()
 				p.Chunks[ind] = chunk
@@ -198,6 +204,7 @@ func (p *Planet) SetCellMaterial(ind CellIndex, material int) bool {
 	if p.db != nil {
 		chunkInd := p.CellIndexToChunkIndex(ind)
 		chunk := p.CellIndexToChunk(ind)
+		p.databaseMutex.Lock()
 		stmt, e := p.db.Prepare("UPDATE chunk SET data = ? WHERE planet = 0 AND lon = ? AND lat = ? AND alt = ?")
 		if e != nil {
 			panic(e)
@@ -212,6 +219,7 @@ func (p *Planet) SetCellMaterial(ind CellIndex, material int) bool {
 		if e != nil {
 			panic(e)
 		}
+		p.databaseMutex.Unlock()
 	}
 
 	return true
