@@ -53,8 +53,8 @@ func Start(name string, seed, port int) {
 		val.ID = 0
 		val.Name = "Spawn"
 		val.Kind = 0
-		val.Radius = 100.0
-		val.AltCells = 16
+		val.Radius = 128.0
+		val.AltCells = 128
 		val.Seed = seed
 		stmt, err = db.Prepare("INSERT INTO planet VALUES (?,?,?,?,?,?)")
 		checkErr(err)

@@ -124,14 +124,18 @@ func (cr *chunkRenderer) updateGeometry(planet *common.Planet, lonIndex, latInde
 			}
 		}
 	}
-	fillVBO(cr.pointsVBO, points)
-	fillVBO(cr.normalsVBO, normals)
-	fillVBO(cr.tcoordsVBO, tcoords)
 	cr.numTriangles = int32(len(points) / 3)
-	cr.geometryUpdated = true
+	if cr.numTriangles > 0 {
+		fillVBO(cr.pointsVBO, points)
+		fillVBO(cr.normalsVBO, normals)
+		fillVBO(cr.tcoordsVBO, tcoords)
+		cr.geometryUpdated = true
+	}
 }
 
 func (cr *chunkRenderer) draw() {
-	gl.BindVertexArray(cr.drawableVAO)
-	gl.DrawArrays(gl.TRIANGLES, 0, cr.numTriangles)
+	if cr.numTriangles > 0 {
+		gl.BindVertexArray(cr.drawableVAO)
+		gl.DrawArrays(gl.TRIANGLES, 0, cr.numTriangles)
+	}
 }

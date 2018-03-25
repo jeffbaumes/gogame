@@ -51,8 +51,8 @@ func NewPlanet(state PlanetState, crpc *rpc.Client, db *sql.DB) *Planet {
 	p.AltMin = p.Radius - float64(p.AltCells)
 	p.AltDelta = 1.0
 	p.LatMax = 90.0
-	p.LonCells = int(2.0*math.Pi*3.0/4.0*p.Radius+0.5) / ChunkSize * ChunkSize
-	p.LatCells = int(p.LatMax/90.0*math.Pi*p.Radius) / ChunkSize * ChunkSize
+	p.LonCells = int(2.0*math.Pi*3.0/4.0*(0.5*p.Radius)+0.5) / ChunkSize * ChunkSize
+	p.LatCells = int(p.LatMax/90.0*math.Pi*(0.5*p.Radius)) / ChunkSize * ChunkSize
 	p.Chunks = make(map[ChunkIndex]*Chunk)
 	p.rpc = crpc
 	p.db = db
@@ -392,18 +392,38 @@ func newChunk(ind ChunkIndex, p *Planet) *Chunk {
 					Lat: float32(ChunkSize*ind.Lat + latIndex),
 					Alt: float32(ChunkSize*ind.Alt + altIndex),
 				}
-				pos := p.CellLocToCartesian(l)
-				const scale = 0.1
-				height := (p.noise.Eval3(float64(pos[0])*scale, float64(pos[1])*scale, float64(pos[2])*scale) + 1.0) * float64(p.AltCells) / 2.0
-				if float64(l.Alt) <= height {
-					if l.Alt > 8 {
-						c.Material = Stone
-					} else {
-						c.Material = Grass
-					}
-				} else {
-					c.Material = Air
+
+				// Sphere planet
+				if float64(l.Alt)/float64(p.AltCells) < 0.5 {
+					c.Material = Stone
 				}
+
+				// Planet with rings
+				// scale := 1.0
+				// n := p.noise.Eval2(float64(l.Alt)*scale, 0)
+				// fracHeight := float64(l.Alt) / float64(p.AltCells)
+				// if fracHeight < 0.5 {
+				// 	c.Material = BlueBlock
+				// } else if fracHeight > 0.6 && n > -0.1 && int(l.Lat) == p.LatCells/2 {
+				// 	c.Material = YellowBlock
+				// }
+
+				// Classic planet
+				// pos := p.CellLocToCartesian(l).Normalize().Mul(float32(p.AltCells / 2))
+				// scale := 0.1
+				// height := float64(p.AltCells)/2 + p.noise.Eval3(float64(pos[0])*scale, float64(pos[1])*scale, float64(pos[2])*scale)*4
+				// if float64(l.Alt) <= height {
+				// 	c.Material = Stone
+				// }
+
+				// Cavey planet
+				// pos := p.CellLocToCartesian(l)
+				// const scale = 0.05
+				// height := (p.noise.Eval3(float64(pos[0])*scale, float64(pos[1])*scale, float64(pos[2])*scale) + 1.0) * float64(p.AltCells) / 2.0
+				// if height > float64(p.AltCells)/2 {
+				// 	c.Material = Stone
+				// }
+
 				chunk.Cells[lonIndex][latIndex] = append(chunk.Cells[lonIndex][latIndex], &c)
 			}
 		}

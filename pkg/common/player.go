@@ -69,6 +69,9 @@ func NewPlayer(name string, planet *Planet) *Player {
 	p.HotbarOn = true
 	p.renderDistance = 4
 	p.Planet = planet
+	for i := range p.Hotbar {
+		p.Hotbar[i] = i + 1
+	}
 	p.Spawn()
 	return &p
 }

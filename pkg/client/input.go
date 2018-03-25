@@ -98,7 +98,7 @@ func keyCallback(player *common.Player, crpc *rpc.Client) func(w *glfw.Window, k
 				winw, winh := w.GetSize()
 				aspect := float32(winw) / float32(winh)
 				for m := range common.Materials {
-					sz := float32(0.05)
+					sz := float32(0.03)
 					px := 1.25 * 2 * sz * (float32(m) - float32(len(common.Materials))/2)
 					py := 1 - 0.25*aspect
 					scale := sz
