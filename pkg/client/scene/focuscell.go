@@ -50,14 +50,15 @@ func NewFocusCell() *FocusCell {
 // Draw draws an outline around the focused cell
 func (focusRen *FocusCell) Draw(player *common.Player, planet *common.Planet, w *glfw.Window) {
 	gl.UseProgram(focusRen.program)
-	lonCells := planet.LonCellsInChunkIndex(planet.CellIndexToChunkIndex(player.FocusCellIndex))
+	lonCells, latCells := planet.LonLatCellsInChunkIndex(planet.CellIndexToChunkIndex(player.FocusCellIndex))
 	lonWidth := common.ChunkSize / lonCells
+	latWidth := common.ChunkSize / latCells
 
 	pts := make([]float32, len(box))
 	for i := 0; i < len(box); i += 3 {
 		ind := common.CellLoc{
 			Lon: float32(player.FocusCellIndex.Lon/lonWidth*lonWidth) + float32(lonWidth-1)/2 + float32(lonWidth)*(box[i+0]*1.01),
-			Lat: float32(player.FocusCellIndex.Lat) + (box[i+1] * 1.01),
+			Lat: float32(player.FocusCellIndex.Lat/latWidth*latWidth) + float32(latWidth-1)/2 + float32(latWidth)*(box[i+1]*1.01),
 			Alt: float32(player.FocusCellIndex.Alt) + (box[i+2] * 1.01),
 		}
 		pt := planet.CellLocToCartesian(ind)

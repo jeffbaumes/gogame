@@ -26,12 +26,12 @@ func newChunkRenderer(chunk *common.Chunk) *chunkRenderer {
 	return &cr
 }
 
-func generateFace(cellIndex common.CellIndex, planet *common.Planet, points []float32, tcoords []float32, lonWidth int, material int) (pts []float32, nms []float32, tcs []float32) {
+func generateFace(cellIndex common.CellIndex, planet *common.Planet, points []float32, tcoords []float32, lonWidth, latWidth int, material int) (pts []float32, nms []float32, tcs []float32) {
 	pts = make([]float32, len(points))
 	for i := 0; i < len(points); i += 3 {
 		l := common.CellLoc{
 			Lon: float32(cellIndex.Lon) + float32(lonWidth-1)/2 + points[i+0]*float32(lonWidth),
-			Lat: float32(cellIndex.Lat) + points[i+1],
+			Lat: float32(cellIndex.Lat) + float32(latWidth-1)/2 + points[i+1]*float32(latWidth),
 			Alt: float32(cellIndex.Alt) + points[i+2],
 		}
 		r, theta, phi := planet.CellLocToSpherical(l)
@@ -71,51 +71,52 @@ func (cr *chunkRenderer) updateGeometry(planet *common.Planet, lonIndex, latInde
 	normals := []float32{}
 	tcoords := []float32{}
 
-	lonCells := planet.LonCellsInChunkIndex(common.ChunkIndex{Lon: lonIndex, Lat: latIndex, Alt: altIndex})
+	lonCells, latCells := planet.LonLatCellsInChunkIndex(common.ChunkIndex{Lon: lonIndex, Lat: latIndex, Alt: altIndex})
 	lonWidth := common.ChunkSize / lonCells
+	latWidth := common.ChunkSize / latCells
 
 	for cLon := 0; cLon < lonCells; cLon++ {
-		for cLat := 0; cLat < cs; cLat++ {
+		for cLat := 0; cLat < latCells; cLat++ {
 			for cAlt := 0; cAlt < cs; cAlt++ {
 				cellIndex := common.CellIndex{
 					Lon: cs*lonIndex + cLon*lonWidth,
-					Lat: cs*latIndex + cLat,
+					Lat: cs*latIndex + cLat*latWidth,
 					Alt: cs*altIndex + cAlt,
 				}
 				cell := cr.chunk.Cells[cLon][cLat][cAlt]
 				if cell.Material != common.Air {
 					if cAlt+1 >= cs || cr.chunk.Cells[cLon][cLat][cAlt+1].Material == common.Air {
-						pts, nms, tcs := generateFace(cellIndex, planet, cubePosZ, cubeTcoordPosZ, lonWidth, cell.Material)
+						pts, nms, tcs := generateFace(cellIndex, planet, cubePosZ, cubeTcoordPosZ, lonWidth, latWidth, cell.Material)
 						points = append(points, pts...)
 						normals = append(normals, nms...)
 						tcoords = append(tcoords, tcs...)
 					}
 					if cAlt-1 < 0 || cr.chunk.Cells[cLon][cLat][cAlt-1].Material == common.Air {
-						pts, nms, tcs := generateFace(cellIndex, planet, cubeNegZ, cubeTcoordNegZ, lonWidth, cell.Material)
+						pts, nms, tcs := generateFace(cellIndex, planet, cubeNegZ, cubeTcoordNegZ, lonWidth, latWidth, cell.Material)
 						points = append(points, pts...)
 						normals = append(normals, nms...)
 						tcoords = append(tcoords, tcs...)
 					}
 					if cLon+1 >= lonCells || cr.chunk.Cells[cLon+1][cLat][cAlt].Material == common.Air {
-						pts, nms, tcs := generateFace(cellIndex, planet, cubePosX, cubeTcoordPosX, lonWidth, cell.Material)
+						pts, nms, tcs := generateFace(cellIndex, planet, cubePosX, cubeTcoordPosX, lonWidth, latWidth, cell.Material)
 						points = append(points, pts...)
 						normals = append(normals, nms...)
 						tcoords = append(tcoords, tcs...)
 					}
 					if cLon-1 < 0 || cr.chunk.Cells[cLon-1][cLat][cAlt].Material == common.Air {
-						pts, nms, tcs := generateFace(cellIndex, planet, cubeNegX, cubeTcoordNegX, lonWidth, cell.Material)
+						pts, nms, tcs := generateFace(cellIndex, planet, cubeNegX, cubeTcoordNegX, lonWidth, latWidth, cell.Material)
 						points = append(points, pts...)
 						normals = append(normals, nms...)
 						tcoords = append(tcoords, tcs...)
 					}
-					if cLat+1 >= cs || cr.chunk.Cells[cLon][cLat+1][cAlt].Material == common.Air {
-						pts, nms, tcs := generateFace(cellIndex, planet, cubePosY, cubeTcoordPosY, lonWidth, cell.Material)
+					if cLat+1 >= latCells || cr.chunk.Cells[cLon][cLat+1][cAlt].Material == common.Air {
+						pts, nms, tcs := generateFace(cellIndex, planet, cubePosY, cubeTcoordPosY, lonWidth, latWidth, cell.Material)
 						points = append(points, pts...)
 						normals = append(normals, nms...)
 						tcoords = append(tcoords, tcs...)
 					}
 					if cLat-1 < 0 || cr.chunk.Cells[cLon][cLat-1][cAlt].Material == common.Air {
-						pts, nms, tcs := generateFace(cellIndex, planet, cubeNegY, cubeTcoordNegY, lonWidth, cell.Material)
+						pts, nms, tcs := generateFace(cellIndex, planet, cubeNegY, cubeTcoordNegY, lonWidth, latWidth, cell.Material)
 						points = append(points, pts...)
 						normals = append(normals, nms...)
 						tcoords = append(tcoords, tcs...)

@@ -315,14 +315,15 @@ func (p *Planet) CellLocToCell(l CellLoc) *Cell {
 // CellIndexToCell converts a cell index to a cell
 func (p *Planet) CellIndexToCell(cellIndex CellIndex) *Cell {
 	chunkIndex := p.CellIndexToChunkIndex(cellIndex)
-	lonCells := p.LonCellsInChunkIndex(chunkIndex)
+	lonCells, latCells := p.LonLatCellsInChunkIndex(chunkIndex)
 	lonWidth := ChunkSize / lonCells
+	latWidth := ChunkSize / latCells
 	chunk := p.CellIndexToChunk(cellIndex)
 	if chunk == nil {
 		return nil
 	}
 	lonInd := (cellIndex.Lon % ChunkSize) / lonWidth
-	latInd := cellIndex.Lat % ChunkSize
+	latInd := (cellIndex.Lat % ChunkSize) / latWidth
 	altInd := cellIndex.Alt % ChunkSize
 	return chunk.Cells[lonInd][latInd][altInd]
 }
@@ -367,16 +368,31 @@ func (p *Planet) CellLocToSpherical(l CellLoc) (r, theta, phi float32) {
 	return
 }
 
-// LonCellsInChunkIndex returns the number of longitude cells in a chunk, which changes based on latitude
-func (p *Planet) LonCellsInChunkIndex(ind ChunkIndex) int {
+// LonLatCellsInChunkIndex returns the number of longitude and latitude cells in a chunk, which changes based on latitude and altitude
+func (p *Planet) LonLatCellsInChunkIndex(ind ChunkIndex) (lonCells, latCells int) {
+	lonCells = ChunkSize
+	latCells = ChunkSize
+
+	// If chunk is too close to the poles, lower the longitude cells per chunk
 	theta := (90.0 - float32(p.LatMax) + (float32(ind.Lat)+0.5)*float32(ChunkSize)/float32(p.LatCells)) * (2.0 * float32(p.LatMax))
-	if math.Abs(float64(theta-90)) >= 80 {
-		return ChunkSize / 4
-	}
 	if math.Abs(float64(theta-90)) >= 60 {
-		return ChunkSize / 2
+		lonCells /= 2
 	}
-	return ChunkSize
+	if math.Abs(float64(theta-90)) >= 80 {
+		lonCells /= 2
+	}
+
+	// If chunk is too close to the center of the planet, lower both lon and lat cells per chunk
+	if (float64(ind.Alt)+0.5)*ChunkSize < p.Radius/4 {
+		lonCells /= 2
+		latCells /= 2
+	}
+	if (float64(ind.Alt)+0.5)*ChunkSize < p.Radius/8 {
+		lonCells /= 2
+		latCells /= 2
+	}
+
+	return
 }
 
 // Chunk is a 3D block of planet cells
@@ -387,24 +403,25 @@ type Chunk struct {
 
 func newChunk(ind ChunkIndex, p *Planet) *Chunk {
 	chunk := Chunk{}
-	lonCells := p.LonCellsInChunkIndex(ind)
+	lonCells, latCells := p.LonLatCellsInChunkIndex(ind)
 	lonWidth := ChunkSize / lonCells
+	latWidth := ChunkSize / latCells
 	chunk.Cells = make([][][]*Cell, lonCells)
 	for lonIndex := 0; lonIndex < lonCells; lonIndex++ {
 		chunk.Cells[lonIndex] = make([][]*Cell, ChunkSize)
-		for latIndex := 0; latIndex < ChunkSize; latIndex++ {
+		for latIndex := 0; latIndex < latCells; latIndex++ {
 			for altIndex := 0; altIndex < ChunkSize; altIndex++ {
 				c := Cell{}
 				l := CellLoc{
 					Lon: float32(ChunkSize*ind.Lon + lonIndex*lonWidth),
-					Lat: float32(ChunkSize*ind.Lat + latIndex),
+					Lat: float32(ChunkSize*ind.Lat + latIndex*latWidth),
 					Alt: float32(ChunkSize*ind.Alt + altIndex),
 				}
 
 				// Sphere planet
-				if float64(l.Alt)/float64(p.AltCells) < 0.5 {
-					c.Material = Stone
-				}
+				// if float64(l.Alt)/float64(p.AltCells) < 0.5 {
+				// 	c.Material = Stone
+				// }
 
 				// Planet with rings
 				// scale := 1.0
@@ -431,6 +448,14 @@ func newChunk(ind ChunkIndex, p *Planet) *Chunk {
 				// if height > float64(p.AltCells)/2 {
 				// 	c.Material = Stone
 				// }
+
+				// Cavey planet 2
+				pos := p.CellLocToCartesian(l)
+				const scale = 0.05
+				noise := p.noise.Eval3(float64(pos[0])*scale, float64(pos[1])*scale, float64(pos[2])*scale)
+				if noise > 0.5 || l.Alt < 1 {
+					c.Material = Stone
+				}
 
 				chunk.Cells[lonIndex][latIndex] = append(chunk.Cells[lonIndex][latIndex], &c)
 			}
