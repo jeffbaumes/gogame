@@ -13,8 +13,7 @@ import (
 )
 
 var (
-	u *common.Universe
-	p *common.Planet
+	universe *common.Universe
 )
 
 // Start takes a name, seed, and port and starts the universe server
@@ -62,7 +61,9 @@ func Start(name string, seed, port int) {
 		checkErr(err)
 	}
 	rows.Close()
-	p = common.NewPlanet(val, nil, db)
+	universe = common.NewUniverse(val.Seed)
+	spawnPlanet := common.NewPlanet(val, nil, db)
+	universe.AddPlanet(spawnPlanet)
 
 	api := new(API)
 	listener, e := net.Listen("tcp", fmt.Sprintf(":%v", port))

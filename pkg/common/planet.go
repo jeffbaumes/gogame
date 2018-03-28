@@ -67,6 +67,12 @@ type ChunkIndex struct {
 	Lon, Lat, Alt int
 }
 
+// PlanetChunkIndex stores the planet, latitude, longitude, and altitude index of a chunk
+type PlanetChunkIndex struct {
+	Planet int
+	ChunkIndex
+}
+
 // CellIndex stores the latitude, longitude, and altitude index of a cell
 type CellIndex struct {
 	Lon, Lat, Alt int
@@ -180,6 +186,7 @@ func (p *Planet) GetChunk(ind ChunkIndex, async bool) *Chunk {
 
 // RPCSetCellMaterialArgs contains the arguments for the SetCellMaterial RPC call
 type RPCSetCellMaterialArgs struct {
+	Planet   int
 	Index    CellIndex
 	Material int
 }
@@ -197,6 +204,7 @@ func (p *Planet) SetCellMaterial(ind CellIndex, material int) bool {
 	if p.rpc != nil {
 		var ret bool
 		p.rpc.Go("API.SetCellMaterial", RPCSetCellMaterialArgs{
+			Planet:   p.ID,
 			Index:    ind,
 			Material: material,
 		}, &ret, nil)
@@ -435,18 +443,18 @@ func newChunk(ind ChunkIndex, p *Planet) *Chunk {
 				// }
 
 				// Planet with rings
-				scale := 1.0
-				n := p.noise.Eval2(float64(l.Alt)*scale, 0)
-				fracHeight := float64(l.Alt) / float64(p.AltCells)
-				if fracHeight < 0.5 {
-					c.Material = Grass
-				} else if fracHeight > 0.6 && int(l.Lat) == p.LatCells/2 {
-					if n > 0.1 {
-						c.Material = YellowBlock
-					} else {
-						c.Material = RedBlock
-					}
-				}
+				// scale := 1.0
+				// n := p.noise.Eval2(float64(l.Alt)*scale, 0)
+				// fracHeight := float64(l.Alt) / float64(p.AltCells)
+				// if fracHeight < 0.5 {
+				// 	c.Material = Grass
+				// } else if fracHeight > 0.6 && int(l.Lat) == p.LatCells/2 {
+				// 	if n > 0.1 {
+				// 		c.Material = YellowBlock
+				// 	} else {
+				// 		c.Material = RedBlock
+				// 	}
+				// }
 
 				// Classic planet
 				// pos := p.CellLocToCartesian(l).Normalize().Mul(float32(p.AltCells / 2))
@@ -465,12 +473,12 @@ func newChunk(ind ChunkIndex, p *Planet) *Chunk {
 				// }
 
 				// Cavey planet 2
-				// pos := p.CellLocToCartesian(l)
-				// const scale = 0.05
-				// noise := p.noise.Eval3(float64(pos[0])*scale, float64(pos[1])*scale, float64(pos[2])*scale)
-				// if noise > 0.5 {
-				// 	c.Material = Stone
-				// }
+				pos := p.CellLocToCartesian(l)
+				const scale = 0.05
+				noise := p.noise.Eval3(float64(pos[0])*scale, float64(pos[1])*scale, float64(pos[2])*scale)
+				if noise > 0.5 {
+					c.Material = Stone
+				}
 
 				// Always give the planet a solid core
 				if l.Alt < 1 {

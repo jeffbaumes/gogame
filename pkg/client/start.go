@@ -20,6 +20,10 @@ const (
 	secondsPerDay = 300
 )
 
+var (
+	universe *scene.Universe
+)
+
 // Start starts a client with the given username, host, and port
 func Start(username, host string, port int) {
 	runtime.LockOSThread()
@@ -54,7 +58,9 @@ func Start(username, host string, port int) {
 
 	planet := common.NewPlanet(planetState, cRPC, nil)
 	player := common.NewPlayer(username, planet)
+	universe = scene.NewUniverse(player, cRPC)
 	planetRen := scene.NewPlanet(planet)
+	universe.AddPlanet(planetRen)
 	over := scene.NewCrosshair()
 	text := scene.NewText()
 	bar := scene.NewHotbar()
@@ -66,18 +72,18 @@ func Start(username, host string, port int) {
 		panic(e)
 	}
 	s := rpc.NewServer()
-	clientAPI := newAPI(planetRen, player)
+	clientAPI := new(API)
 	s.Register(clientAPI)
 	go s.ServeConn(smuxConn)
 
-	peopleRen := scene.NewPlayers(&clientAPI.connectedPeople)
+	peopleRen := scene.NewPlayers(&universe.ConnectedPeople)
 	focusRen := scene.NewFocusCell()
 
 	window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
-	window.SetKeyCallback(keyCallback(player, cRPC))
-	window.SetCursorPosCallback(cursorPosCallback(player))
+	window.SetKeyCallback(keyCallback)
+	window.SetCursorPosCallback(cursorPosCallback())
 	window.SetSizeCallback(windowSizeCallback)
-	window.SetMouseButtonCallback(mouseButtonCallback(player, planetRen, &clientAPI.connectedPeople, cRPC))
+	window.SetMouseButtonCallback(mouseButtonCallback)
 
 	startTime := time.Now()
 	t := startTime

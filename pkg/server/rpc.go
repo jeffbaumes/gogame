@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"log"
 
 	"github.com/jeffbaumes/gogame/pkg/common"
@@ -13,13 +14,21 @@ type API struct {
 
 // GetPlanetState returns the planet state
 func (api *API) GetPlanetState(args *int, state *common.PlanetState) error {
-	*state = p.PlanetState
+	planet := universe.PlanetMap[*args]
+	if planet == nil {
+		return errors.New("Unknown planet ID")
+	}
+	*state = planet.PlanetState
 	return nil
 }
 
 // GetChunk returns the planet chunk for the given chunk coordinates
-func (api *API) GetChunk(args *common.ChunkIndex, chunk *common.Chunk) error {
-	c := p.GetChunk(*args, false)
+func (api *API) GetChunk(args *common.PlanetChunkIndex, chunk *common.Chunk) error {
+	planet := universe.PlanetMap[args.Planet]
+	if planet == nil {
+		return errors.New("Unknown planet ID")
+	}
+	c := planet.GetChunk(args.ChunkIndex, false)
 	if c != nil {
 		*chunk = *c
 	}
@@ -94,7 +103,11 @@ func (api *API) HitPlayer(args *common.HitPlayerArgs, ret *bool) error {
 
 // SetCellMaterial sets the material for a particular cell
 func (api *API) SetCellMaterial(args *common.RPCSetCellMaterialArgs, ret *bool) error {
-	*ret = p.SetCellMaterial(args.Index, args.Material)
+	planet := universe.PlanetMap[args.Planet]
+	if planet == nil {
+		return errors.New("Unknown planet ID")
+	}
+	*ret = planet.SetCellMaterial(args.Index, args.Material)
 	var validPeople []*connectedPerson
 	for _, c := range api.connectedPeople {
 		var ret bool
