@@ -19,12 +19,16 @@ const (
 
 // PlanetState is the serializable portion of a Planet
 type PlanetState struct {
-	ID       int
-	Name     string
-	Kind     int
-	Radius   float64
-	AltCells int
-	Seed     int
+	ID              int
+	Name            string
+	GeneratorType   string
+	Radius          float64
+	AltCells        int
+	Seed            int
+	OrbitPlanet     int
+	OrbitDistance   float64
+	OrbitSeconds    float64
+	RotationSeconds float64
 }
 
 // Planet represents all the cells in a spherical planet
@@ -35,6 +39,7 @@ type Planet struct {
 	databaseMutex *sync.Mutex
 	ChunksMutex   *sync.Mutex
 	noise         *opensimplex.Noise
+	Generator     func(*Planet, CellLoc) int
 	AltMin        float64
 	AltDelta      float64
 	LatMax        float64
@@ -59,6 +64,11 @@ func NewPlanet(state PlanetState, crpc *rpc.Client, db *sql.DB) *Planet {
 	p.db = db
 	p.databaseMutex = &sync.Mutex{}
 	p.ChunksMutex = &sync.Mutex{}
+	initializeGenerators()
+	p.Generator = generators[p.GeneratorType]
+	if p.Generator == nil {
+		p.Generator = generators["sphere"]
+	}
 	return &p
 }
 
@@ -107,7 +117,7 @@ func (p *Planet) GetChunk(ind ChunkIndex, async bool) *Chunk {
 		if p.rpc == nil {
 			if p.db != nil {
 				p.databaseMutex.Lock()
-				rows, e := p.db.Query("SELECT data FROM chunk WHERE planet = 0 AND lon = ? AND lat = ? AND alt = ?", ind.Lon, ind.Lat, ind.Alt)
+				rows, e := p.db.Query("SELECT data FROM chunk WHERE planet = ? AND lon = ? AND lat = ? AND alt = ?", p.ID, ind.Lon, ind.Lat, ind.Alt)
 				if e != nil {
 					panic(e)
 				}
@@ -142,7 +152,7 @@ func (p *Planet) GetChunk(ind ChunkIndex, async bool) *Chunk {
 					if e != nil {
 						panic(e)
 					}
-					_, e = stmt.Exec(0, ind.Lon, ind.Lat, ind.Alt, buf.Bytes())
+					_, e = stmt.Exec(p.ID, ind.Lon, ind.Lat, ind.Alt, buf.Bytes())
 					if e != nil {
 						panic(e)
 					}
@@ -159,8 +169,9 @@ func (p *Planet) GetChunk(ind ChunkIndex, async bool) *Chunk {
 			}
 		} else {
 			rchunk := Chunk{}
+			pind := PlanetChunkIndex{Planet: p.ID, ChunkIndex: ind}
 			if async {
-				call := p.rpc.Go("API.GetChunk", ind, &rchunk, nil)
+				call := p.rpc.Go("API.GetChunk", pind, &rchunk, nil)
 				go func() {
 					call = <-call.Done
 					p.ChunksMutex.Lock()
@@ -171,7 +182,7 @@ func (p *Planet) GetChunk(ind ChunkIndex, async bool) *Chunk {
 				p.Chunks[ind] = &Chunk{WaitingForData: true}
 				p.ChunksMutex.Unlock()
 			} else {
-				e := p.rpc.Call("API.GetChunk", ind, &rchunk)
+				e := p.rpc.Call("API.GetChunk", pind, &rchunk)
 				if e != nil {
 					panic(e)
 				}
@@ -437,51 +448,10 @@ func newChunk(ind ChunkIndex, p *Planet) *Chunk {
 					Alt: float32(ChunkSize*ind.Alt + altIndex),
 				}
 
-				// Sphere planet
-				// if float64(l.Alt)/float64(p.AltCells) < 0.5 {
-				// 	c.Material = Stone
-				// }
-
-				// Planet with rings
-				// scale := 1.0
-				// n := p.noise.Eval2(float64(l.Alt)*scale, 0)
-				// fracHeight := float64(l.Alt) / float64(p.AltCells)
-				// if fracHeight < 0.5 {
-				// 	c.Material = Grass
-				// } else if fracHeight > 0.6 && int(l.Lat) == p.LatCells/2 {
-				// 	if n > 0.1 {
-				// 		c.Material = YellowBlock
-				// 	} else {
-				// 		c.Material = RedBlock
-				// 	}
-				// }
-
-				// Classic planet
-				// pos := p.CellLocToCartesian(l).Normalize().Mul(float32(p.AltCells / 2))
-				// scale := 0.1
-				// height := float64(p.AltCells)/2 + p.noise.Eval3(float64(pos[0])*scale, float64(pos[1])*scale, float64(pos[2])*scale)*4
-				// if float64(l.Alt) <= height {
-				// 	c.Material = Stone
-				// }
-
-				// Cavey planet
-				// pos := p.CellLocToCartesian(l)
-				// const scale = 0.05
-				// height := (p.noise.Eval3(float64(pos[0])*scale, float64(pos[1])*scale, float64(pos[2])*scale) + 1.0) * float64(p.AltCells) / 2.0
-				// if height > float64(p.AltCells)/2 {
-				// 	c.Material = Stone
-				// }
-
-				// Cavey planet 2
-				pos := p.CellLocToCartesian(l)
-				const scale = 0.05
-				noise := p.noise.Eval3(float64(pos[0])*scale, float64(pos[1])*scale, float64(pos[2])*scale)
-				if noise > 0.5 {
-					c.Material = Stone
-				}
+				c.Material = p.Generator(p, l)
 
 				// Always give the planet a solid core
-				if l.Alt < 1 {
+				if l.Alt < 2 {
 					c.Material = Stone
 				}
 

@@ -2,7 +2,6 @@ package client
 
 import (
 	"fmt"
-	"math"
 	"net"
 	"net/rpc"
 	"runtime"
@@ -15,9 +14,8 @@ import (
 )
 
 const (
-	targetFPS     = 60
-	gravity       = 9.8
-	secondsPerDay = 300
+	targetFPS = 60
+	gravity   = 9.8
 )
 
 var (
@@ -49,18 +47,30 @@ func Start(username, host string, port int) {
 	cRPC := rpc.NewClient(stream)
 
 	// Create planet
-	planetID := 0
 	planetState := common.PlanetState{}
-	e = cRPC.Call("API.GetPlanetState", planetID, &planetState)
+	e = cRPC.Call("API.GetPlanetState", 0, &planetState)
 	if e != nil {
 		panic(e)
 	}
-
 	planet := common.NewPlanet(planetState, cRPC, nil)
+
+	// Create moon
+	moonState := common.PlanetState{}
+	e = cRPC.Call("API.GetPlanetState", 1, &moonState)
+	if e != nil {
+		panic(e)
+	}
+	moon := common.NewPlanet(moonState, cRPC, nil)
+
 	player := common.NewPlayer(username, planet)
 	universe = scene.NewUniverse(player, cRPC)
+
 	planetRen := scene.NewPlanet(planet)
 	universe.AddPlanet(planetRen)
+
+	moonRen := scene.NewPlanet(moon)
+	universe.AddPlanet(moonRen)
+
 	over := scene.NewCrosshair()
 	text := scene.NewText()
 	bar := scene.NewHotbar()
@@ -91,13 +101,11 @@ func Start(username, host string, port int) {
 	for !window.ShouldClose() {
 		h := float32(time.Since(t)) / float32(time.Second)
 		t = time.Now()
-
 		elapsedSeconds := float64(time.Since(startTime)) / float64(time.Second)
-		_, timeOfDay := math.Modf(elapsedSeconds / secondsPerDay)
 
-		drawFrame(h, player, text, over, planetRen, peopleRen, focusRen, bar, health, window, timeOfDay)
+		drawFrame(h, player, text, over, peopleRen, focusRen, bar, health, window, elapsedSeconds)
 
-		player.UpdatePosition(h, planet)
+		player.UpdatePosition(h)
 
 		if float64(time.Since(syncT))/float64(time.Second) > 0.05 {
 			syncT = time.Now()

@@ -47,7 +47,9 @@ func initOpenGL() {
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 }
 
-func drawFrame(h float32, player *common.Player, text *scene.Text, over *scene.Crosshair, planetRen *scene.Planet, peopleRen *scene.Players, focusRen *scene.FocusCell, bar *scene.Hotbar, health *scene.Health, window *glfw.Window, timeOfDay float64) {
+func drawFrame(h float32, player *common.Player, text *scene.Text, over *scene.Crosshair, peopleRen *scene.Players, focusRen *scene.FocusCell, bar *scene.Hotbar, health *scene.Health, window *glfw.Window, time float64) {
+	planet := universe.Player.Planet
+	_, timeOfDay := math.Modf(time / planet.RotationSeconds)
 	sunAngle := timeOfDay * math.Pi * 2
 	sunDir := mgl32.Vec3{float32(math.Sin(sunAngle)), float32(math.Cos(sunAngle)), 0}
 	vpnDotSun := float64(player.Loc.Normalize().Dot(sunDir))
@@ -69,12 +71,12 @@ func drawFrame(h float32, player *common.Player, text *scene.Text, over *scene.C
 	light := light1Color.Mul(float32(light1)).Add(light2Color.Mul(float32(light2))).Add(light3Color.Mul(float32(light3)))
 
 	gl.ClearColor(light.X(), light.Y(), light.Z(), 1)
-	planetRen.Planet.CartesianToCellIndex(player.Loc)
+	planet.CartesianToCellIndex(player.Loc)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-	planetRen.Draw(player, window, timeOfDay)
+	universe.Draw(window, time)
 	peopleRen.Draw(player, window)
-	focusRen.Draw(player, planetRen.Planet, window)
+	focusRen.Draw(player, planet, window)
 	over.Draw(window)
 	text.Draw(player, window)
 	bar.Draw(player, window)

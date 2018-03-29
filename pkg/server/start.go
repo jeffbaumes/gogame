@@ -1,7 +1,9 @@
 package server
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/gob"
 	"fmt"
 	"log"
 	"net"
@@ -16,23 +18,45 @@ var (
 	universe *common.Universe
 )
 
+func queryPlanetState(db *sql.DB, defaultState common.PlanetState) common.PlanetState {
+	rows, err := db.Query("SELECT data FROM planet WHERE id = ?", defaultState.ID)
+	checkErr(err)
+	defer rows.Close()
+	if rows.Next() {
+		var val common.PlanetState
+		var data []byte
+		err = rows.Scan(&data)
+		checkErr(err)
+		var dbuf bytes.Buffer
+		dbuf.Write(data)
+		dec := gob.NewDecoder(&dbuf)
+		err = dec.Decode(&val)
+		checkErr(err)
+		return val
+	}
+	stmt, err := db.Prepare("INSERT INTO planet VALUES (?, ?)")
+	checkErr(err)
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err = enc.Encode(defaultState)
+	checkErr(err)
+	_, err = stmt.Exec(defaultState.ID, buf.Bytes())
+	checkErr(err)
+	return defaultState
+}
+
 // Start takes a name, seed, and port and starts the universe server
 func Start(name string, seed, port int) {
 	dbName := "worlds/" + name + ".db"
 
 	db, err := sql.Open("sqlite3", dbName)
 	checkErr(err)
-	// defer db.Close()
 
-	// stmt, err := db.Prepare("CREATE TABLE IF NOT EXISTS setting (name TEXT PRIMARY KEY, val TEXT)")
-	// checkErr(err)
-	// _, err = stmt.Exec()
-	// checkErr(err)
 	stmt, err := db.Prepare("CREATE TABLE IF NOT EXISTS chunk (planet INT, lon INT, lat INT, alt INT, data BLOB, PRIMARY KEY (planet, lat, lon, alt))")
 	checkErr(err)
 	_, err = stmt.Exec()
 	checkErr(err)
-	stmt, err = db.Prepare("CREATE TABLE IF NOT EXISTS planet (id INT PRIMARY KEY, name TEXT, kind INT, radius FLOAT, altcells INT, seed INT)")
+	stmt, err = db.Prepare("CREATE TABLE IF NOT EXISTS planet (id INT PRIMARY KEY, data BLOB)")
 	checkErr(err)
 	_, err = stmt.Exec()
 	checkErr(err)
@@ -41,29 +65,36 @@ func Start(name string, seed, port int) {
 	_, err = stmt.Exec()
 	checkErr(err)
 
-	rows, err := db.Query("SELECT * FROM planet WHERE id = 0")
-	checkErr(err)
-
-	var val common.PlanetState
-	if rows.Next() {
-		err = rows.Scan(&val.ID, &val.Name, &val.Kind, &val.Radius, &val.AltCells, &val.Seed)
-		checkErr(err)
-	} else {
-		val.ID = 0
-		val.Name = "Spawn"
-		val.Kind = 0
-		val.Radius = 128.0
-		val.AltCells = 128
-		val.Seed = seed
-		stmt, err = db.Prepare("INSERT INTO planet VALUES (?,?,?,?,?,?)")
-		checkErr(err)
-		_, err = stmt.Exec(val.ID, val.Name, val.Kind, val.Radius, val.AltCells, val.Seed)
-		checkErr(err)
+	defaultPlanetState := common.PlanetState{
+		ID:              0,
+		Name:            "Spawn",
+		GeneratorType:   "bumpy",
+		Radius:          128.0,
+		AltCells:        128,
+		Seed:            seed,
+		RotationSeconds: 300,
 	}
-	rows.Close()
-	universe = common.NewUniverse(val.Seed)
-	spawnPlanet := common.NewPlanet(val, nil, db)
-	universe.AddPlanet(spawnPlanet)
+	planetState := queryPlanetState(db, defaultPlanetState)
+
+	defaultMoonState := common.PlanetState{
+		ID:              1,
+		Name:            "Moon",
+		GeneratorType:   "sphere",
+		Radius:          64.0,
+		AltCells:        64,
+		Seed:            seed,
+		OrbitPlanet:     0,
+		OrbitDistance:   1000,
+		OrbitSeconds:    1000,
+		RotationSeconds: 500,
+	}
+	moonState := queryPlanetState(db, defaultMoonState)
+
+	universe = common.NewUniverse(planetState.Seed)
+	planet := common.NewPlanet(planetState, nil, db)
+	universe.AddPlanet(planet)
+	moon := common.NewPlanet(moonState, nil, db)
+	universe.AddPlanet(moon)
 
 	api := new(API)
 	listener, e := net.Listen("tcp", fmt.Sprintf(":%v", port))

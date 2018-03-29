@@ -116,7 +116,9 @@ func (planetRen *Planet) SetCellMaterial(ind common.CellIndex, material int) {
 }
 
 // Draw draws the planet's visible chunks
-func (planetRen *Planet) Draw(player *common.Player, w *glfw.Window, timeOfDay float64) {
+func (planetRen *Planet) Draw(player *common.Player, w *glfw.Window, time float64) {
+	_, timeOfDay := math.Modf(time / planetRen.Planet.RotationSeconds)
+
 	gl.UseProgram(planetRen.program)
 	lookDir := player.LookDir()
 	view := mgl32.LookAtV(player.Loc, player.Loc.Add(lookDir), player.Loc.Normalize())

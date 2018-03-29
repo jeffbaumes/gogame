@@ -156,7 +156,8 @@ func (player *Player) LoadNearbyChunks(async bool) {
 }
 
 // UpdatePosition updates the player position
-func (player *Player) UpdatePosition(h float32, planet *Planet) {
+func (player *Player) UpdatePosition(h float32) {
+	planet := player.Planet
 	player.LoadNearbyChunks(true)
 	if h > 0.05 {
 		h = 0.05

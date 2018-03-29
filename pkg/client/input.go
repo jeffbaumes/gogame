@@ -185,6 +185,12 @@ func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action,
 				if player.GameMode == common.Flying {
 					player.FallVel = 0
 				}
+			case glfw.KeyLeftBracket:
+				player.Planet = universe.PlanetMap[0].Planet
+				player.Spawn()
+			case glfw.KeyRightBracket:
+				player.Planet = universe.PlanetMap[1].Planet
+				player.Spawn()
 			case glfw.KeyEscape:
 				w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 			}

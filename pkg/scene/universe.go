@@ -3,6 +3,7 @@ package scene
 import (
 	"net/rpc"
 
+	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/jeffbaumes/gogame/pkg/common"
 )
 
@@ -26,4 +27,12 @@ func NewUniverse(player *common.Player, rpc *rpc.Client) *Universe {
 // AddPlanet adds a planet to the planet map
 func (u *Universe) AddPlanet(planet *Planet) {
 	u.PlanetMap[planet.Planet.ID] = planet
+}
+
+// Draw draws the universe's planets
+func (u *Universe) Draw(w *glfw.Window, time float64) {
+	u.PlanetMap[u.Player.Planet.ID].Draw(u.Player, w, time)
+	// for _, planetRen := range u.PlanetMap {
+	// 	planetRen.Draw(u.Player, w, time)
+	// }
 }
