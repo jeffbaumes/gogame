@@ -31,8 +31,7 @@ func (u *Universe) AddPlanet(planet *Planet) {
 
 // Draw draws the universe's planets
 func (u *Universe) Draw(w *glfw.Window, time float64) {
-	u.PlanetMap[u.Player.Planet.ID].Draw(u.Player, w, time)
-	// for _, planetRen := range u.PlanetMap {
-	// 	planetRen.Draw(u.Player, w, time)
-	// }
+	for _, planetRen := range u.PlanetMap {
+		planetRen.Draw(u.Player, u.PlanetMap, w, time)
+	}
 }

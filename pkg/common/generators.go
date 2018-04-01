@@ -3,6 +3,7 @@ package common
 var (
 	generatorsInitialized bool
 	generators            map[string](func(*Planet, CellLoc) int)
+	systems               map[string](func() []*PlanetState)
 )
 
 func initializeGenerators() {
@@ -64,5 +65,80 @@ func initializeGenerators() {
 			return Stone
 		}
 		return Air
+	}
+
+	systems = make(map[string](func() []*PlanetState))
+
+	systems["planet"] = func() []*PlanetState {
+		return []*PlanetState{
+			&PlanetState{
+				ID:              0,
+				Name:            "Spawn",
+				GeneratorType:   "bumpy",
+				Radius:          64.0,
+				AltCells:        64,
+				RotationSeconds: 10,
+			},
+		}
+	}
+
+	systems["moon"] = func() []*PlanetState {
+		return []*PlanetState{
+			&PlanetState{
+				ID:              0,
+				Name:            "Spawn",
+				GeneratorType:   "bumpy",
+				Radius:          64.0,
+				AltCells:        64,
+				RotationSeconds: 10,
+			},
+			&PlanetState{
+				ID:              1,
+				Name:            "Moon",
+				GeneratorType:   "sphere",
+				Radius:          32.0,
+				AltCells:        32,
+				OrbitPlanet:     0,
+				OrbitDistance:   100,
+				OrbitSeconds:    5,
+				RotationSeconds: 10,
+			},
+		}
+	}
+
+	systems["sun-moon"] = func() []*PlanetState {
+		return []*PlanetState{
+			&PlanetState{
+				ID:              0,
+				Name:            "Spawn",
+				GeneratorType:   "bumpy",
+				Radius:          64.0,
+				AltCells:        64,
+				OrbitPlanet:     2,
+				OrbitDistance:   300,
+				OrbitSeconds:    100,
+				RotationSeconds: 10,
+			},
+			&PlanetState{
+				ID:              1,
+				Name:            "Moon",
+				GeneratorType:   "sphere",
+				Radius:          32.0,
+				AltCells:        32,
+				OrbitPlanet:     0,
+				OrbitDistance:   100,
+				OrbitSeconds:    5,
+				RotationSeconds: 10,
+			},
+			&PlanetState{
+				ID:              2,
+				Name:            "Sun",
+				GeneratorType:   "sphere",
+				Radius:          128.0,
+				AltCells:        128,
+				OrbitPlanet:     2,
+				RotationSeconds: 9000000,
+			},
+		}
 	}
 }

@@ -12,13 +12,13 @@ type API struct {
 	connectedPeople []*connectedPerson
 }
 
-// GetPlanetState returns the planet state
-func (api *API) GetPlanetState(args *int, state *common.PlanetState) error {
-	planet := universe.PlanetMap[*args]
-	if planet == nil {
-		return errors.New("Unknown planet ID")
+// GetPlanetStates returns all planets
+func (api *API) GetPlanetStates(args *int, states *[]*common.PlanetState) error {
+	planets := []*common.PlanetState{}
+	for _, planet := range universe.PlanetMap {
+		planets = append(planets, &planet.PlanetState)
 	}
-	*state = planet.PlanetState
+	*states = planets
 	return nil
 }
 

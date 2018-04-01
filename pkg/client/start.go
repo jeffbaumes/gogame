@@ -46,30 +46,22 @@ func Start(username, host string, port int) {
 	}
 	cRPC := rpc.NewClient(stream)
 
-	// Create planet
-	planetState := common.PlanetState{}
-	e = cRPC.Call("API.GetPlanetState", 0, &planetState)
-	if e != nil {
-		panic(e)
-	}
-	planet := common.NewPlanet(planetState, cRPC, nil)
-
-	// Create moon
-	moonState := common.PlanetState{}
-	e = cRPC.Call("API.GetPlanetState", 1, &moonState)
-	if e != nil {
-		panic(e)
-	}
-	moon := common.NewPlanet(moonState, cRPC, nil)
-
-	player := common.NewPlayer(username, planet)
+	player := common.NewPlayer(username)
 	universe = scene.NewUniverse(player, cRPC)
 
-	planetRen := scene.NewPlanet(planet)
-	universe.AddPlanet(planetRen)
+	planetStates := []*common.PlanetState{}
+	e = cRPC.Call("API.GetPlanetStates", 0, &planetStates)
+	if e != nil {
+		panic(e)
+	}
+	for _, state := range planetStates {
+		planet := common.NewPlanet(*state, cRPC, nil)
+		planetRen := scene.NewPlanet(planet)
+		universe.AddPlanet(planetRen)
+	}
 
-	moonRen := scene.NewPlanet(moon)
-	universe.AddPlanet(moonRen)
+	player.Planet = universe.PlanetMap[0].Planet
+	player.Spawn()
 
 	over := scene.NewCrosshair()
 	text := scene.NewText()

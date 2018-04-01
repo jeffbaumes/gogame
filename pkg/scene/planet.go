@@ -115,20 +115,48 @@ func (planetRen *Planet) SetCellMaterial(ind common.CellIndex, material int) {
 	chunkRen.geometryUpdated = false
 }
 
-// Draw draws the planet's visible chunks
-func (planetRen *Planet) Draw(player *common.Player, w *glfw.Window, time float64) {
-	_, timeOfDay := math.Modf(time / planetRen.Planet.RotationSeconds)
+func (planetRen *Planet) location(time float64, planetMap map[int]*Planet) mgl32.Vec3 {
+	planet := planetRen.Planet
+	if planet.ID == planet.OrbitPlanet {
+		return mgl32.Vec3{}
+	}
+	orbitLoc := planetMap[planet.OrbitPlanet].location(time, planetMap)
+	_, timeOfOrbit := math.Modf(time / planet.OrbitSeconds)
+	orbitAng := 2 * math.Pi * timeOfOrbit
+	loc := orbitLoc.Add(
+		mgl32.Vec3{
+			float32(math.Cos(orbitAng)),
+			float32(math.Sin(orbitAng)),
+			0,
+		}.Mul(float32(planet.OrbitDistance)),
+	)
+	return loc
+}
 
-	gl.UseProgram(planetRen.program)
+// Draw draws the planet's visible chunks
+func (planetRen *Planet) Draw(player *common.Player, planetMap map[int]*Planet, w *glfw.Window, time float64) {
+	_, planetRotation := math.Modf(time / planetRen.Planet.RotationSeconds)
+	planetRotation *= 2 * math.Pi
 	lookDir := player.LookDir()
 	view := mgl32.LookAtV(player.Loc, player.Loc.Add(lookDir), player.Loc.Normalize())
+	if player.Planet.ID != planetRen.Planet.ID {
+		playerPlanetLoc := planetMap[player.Planet.ID].location(time, planetMap)
+		planetLoc := planetRen.location(time, planetMap)
+		relativeLoc := playerPlanetLoc.Sub(planetLoc)
+		_, playerPlanetRotation := math.Modf(time / player.Planet.RotationSeconds)
+		playerPlanetRotation *= 2 * math.Pi
+		playerPlanetRotate := mgl32.HomogRotate3DZ(float32(playerPlanetRotation))
+		translate := mgl32.Translate3D(relativeLoc[0], relativeLoc[1], relativeLoc[2])
+		planetRotate := mgl32.HomogRotate3DZ(float32(planetRotation))
+		view = view.Mul4(playerPlanetRotate).Mul4(translate).Mul4(planetRotate)
+	}
 	width, height := FramebufferSize(w)
-	perspective := mgl32.Perspective(45, float32(width)/float32(height), 0.01, 1000)
+	perspective := mgl32.Perspective(float32(60*math.Pi/180), float32(width)/float32(height), 0.01, 1000)
 	proj := perspective.Mul4(view)
+	gl.UseProgram(planetRen.program)
 	gl.UniformMatrix4fv(planetRen.projectionUniform, 1, false, &proj[0])
 	gl.Uniform1i(planetRen.textureUniform, planetRen.textureUnit)
-	sunAngle := timeOfDay * math.Pi * 2
-	gl.Uniform3f(planetRen.sunDirUniform, float32(math.Sin(sunAngle)), float32(math.Cos(sunAngle)), 0)
+	gl.Uniform3f(planetRen.sunDirUniform, float32(math.Sin(planetRotation)), float32(math.Cos(planetRotation)), 0)
 
 	planetRen.Planet.ChunksMutex.Lock()
 	for key, chunk := range planetRen.Planet.Chunks {

@@ -58,7 +58,7 @@ type HitPlayerArgs struct {
 }
 
 // NewPlayer creates a new player
-func NewPlayer(name string, planet *Planet) *Player {
+func NewPlayer(name string) *Player {
 	p := Player{}
 	p.WalkVel = 5.0
 	p.height = 2
@@ -68,11 +68,9 @@ func NewPlayer(name string, planet *Planet) *Player {
 	p.ActiveHotBarSlot = 0
 	p.HotbarOn = true
 	p.renderDistance = 4
-	p.Planet = planet
 	for i := range p.Hotbar {
 		p.Hotbar[i] = i + 1
 	}
-	p.Spawn()
 	return &p
 }
 

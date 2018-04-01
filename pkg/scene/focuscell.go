@@ -1,6 +1,8 @@
 package scene
 
 import (
+	"math"
+
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/go-gl/mathgl/mgl32"
@@ -72,7 +74,7 @@ func (focusRen *FocusCell) Draw(player *common.Player, planet *common.Planet, w 
 	lookDir := player.LookDir()
 	view := mgl32.LookAtV(player.Loc, player.Loc.Add(lookDir), player.Loc.Normalize())
 	width, height := FramebufferSize(w)
-	perspective := mgl32.Perspective(45, float32(width)/float32(height), 0.01, 1000)
+	perspective := mgl32.Perspective(float32(60*math.Pi/180), float32(width)/float32(height), 0.01, 1000)
 	proj := perspective.Mul4(view)
 	gl.UniformMatrix4fv(focusRen.projectionUniform, 1, false, &proj[0])
 

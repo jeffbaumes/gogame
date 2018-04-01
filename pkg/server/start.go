@@ -1,9 +1,7 @@
 package server
 
 import (
-	"bytes"
 	"database/sql"
-	"encoding/gob"
 	"fmt"
 	"log"
 	"net"
@@ -17,33 +15,6 @@ import (
 var (
 	universe *common.Universe
 )
-
-func queryPlanetState(db *sql.DB, defaultState common.PlanetState) common.PlanetState {
-	rows, err := db.Query("SELECT data FROM planet WHERE id = ?", defaultState.ID)
-	checkErr(err)
-	defer rows.Close()
-	if rows.Next() {
-		var val common.PlanetState
-		var data []byte
-		err = rows.Scan(&data)
-		checkErr(err)
-		var dbuf bytes.Buffer
-		dbuf.Write(data)
-		dec := gob.NewDecoder(&dbuf)
-		err = dec.Decode(&val)
-		checkErr(err)
-		return val
-	}
-	stmt, err := db.Prepare("INSERT INTO planet VALUES (?, ?)")
-	checkErr(err)
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	err = enc.Encode(defaultState)
-	checkErr(err)
-	_, err = stmt.Exec(defaultState.ID, buf.Bytes())
-	checkErr(err)
-	return defaultState
-}
 
 // Start takes a name, seed, and port and starts the universe server
 func Start(name string, seed, port int) {
@@ -65,36 +36,7 @@ func Start(name string, seed, port int) {
 	_, err = stmt.Exec()
 	checkErr(err)
 
-	defaultPlanetState := common.PlanetState{
-		ID:              0,
-		Name:            "Spawn",
-		GeneratorType:   "bumpy",
-		Radius:          128.0,
-		AltCells:        128,
-		Seed:            seed,
-		RotationSeconds: 300,
-	}
-	planetState := queryPlanetState(db, defaultPlanetState)
-
-	defaultMoonState := common.PlanetState{
-		ID:              1,
-		Name:            "Moon",
-		GeneratorType:   "sphere",
-		Radius:          64.0,
-		AltCells:        64,
-		Seed:            seed,
-		OrbitPlanet:     0,
-		OrbitDistance:   1000,
-		OrbitSeconds:    1000,
-		RotationSeconds: 500,
-	}
-	moonState := queryPlanetState(db, defaultMoonState)
-
-	universe = common.NewUniverse(planetState.Seed)
-	planet := common.NewPlanet(planetState, nil, db)
-	universe.AddPlanet(planet)
-	moon := common.NewPlanet(moonState, nil, db)
-	universe.AddPlanet(moon)
+	universe = common.NewUniverse(db, "planet")
 
 	api := new(API)
 	listener, e := net.Listen("tcp", fmt.Sprintf(":%v", port))
