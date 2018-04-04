@@ -36,7 +36,7 @@ func Start(name string, seed, port int) {
 	_, err = stmt.Exec()
 	checkErr(err)
 
-	universe = common.NewUniverse(db, "planet")
+	universe = common.NewUniverse(db, "sun-moon")
 
 	api := new(API)
 	listener, e := net.Listen("tcp", fmt.Sprintf(":%v", port))

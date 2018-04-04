@@ -24,7 +24,6 @@ func NewUniverse(db *sql.DB, systemType string) *Universe {
 
 	// If no planets in the database, generate a planetary system
 	if len(planetStates) == 0 {
-		initializeGenerators()
 		systemGen := systems[systemType]
 		if systemGen == nil {
 			systemGen = systems["planet"]

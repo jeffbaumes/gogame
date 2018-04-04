@@ -64,7 +64,6 @@ func NewPlanet(state PlanetState, crpc *rpc.Client, db *sql.DB) *Planet {
 	p.db = db
 	p.databaseMutex = &sync.Mutex{}
 	p.ChunksMutex = &sync.Mutex{}
-	initializeGenerators()
 	p.Generator = generators[p.GeneratorType]
 	if p.Generator == nil {
 		p.Generator = generators["sphere"]

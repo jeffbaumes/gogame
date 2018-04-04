@@ -1,17 +1,11 @@
 package common
 
 var (
-	generatorsInitialized bool
-	generators            map[string](func(*Planet, CellLoc) int)
-	systems               map[string](func() []*PlanetState)
+	generators map[string](func(*Planet, CellLoc) int)
+	systems    map[string](func() []*PlanetState)
 )
 
-func initializeGenerators() {
-	if generatorsInitialized {
-		return
-	}
-	generatorsInitialized = true
-
+func init() {
 	generators = make(map[string](func(*Planet, CellLoc) int))
 
 	generators["sphere"] = func(p *Planet, loc CellLoc) int {
