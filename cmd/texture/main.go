@@ -5,11 +5,11 @@ import (
 	"log"
 	"os"
 
-	"github.com/jeffbaumes/gogame/pkg/client"
+	"github.com/jeffbaumes/gogame/pkg/scene"
 )
 
 func main() {
-	v := client.LoadTextures()
+	v := scene.LoadTextures()
 	f, err := os.Create("textures.png")
 	if err != nil {
 		log.Fatal(err)

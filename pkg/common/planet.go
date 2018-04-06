@@ -35,6 +35,8 @@ type PlanetState struct {
 type Planet struct {
 	rpc           *rpc.Client
 	db            *sql.DB
+	Geometry      *PlanetGeometry
+	GeometryMutex *sync.Mutex
 	Chunks        map[ChunkIndex]*Chunk
 	databaseMutex *sync.Mutex
 	ChunksMutex   *sync.Mutex
@@ -64,6 +66,7 @@ func NewPlanet(state PlanetState, crpc *rpc.Client, db *sql.DB) *Planet {
 	p.db = db
 	p.databaseMutex = &sync.Mutex{}
 	p.ChunksMutex = &sync.Mutex{}
+	p.GeometryMutex = &sync.Mutex{}
 	p.Generator = generators[p.GeneratorType]
 	if p.Generator == nil {
 		p.Generator = generators["sphere"]
@@ -512,3 +515,70 @@ var (
 	YellowBlock = Materials.pos("yellow_block")
 	YellowSand  = Materials.pos("yellow_sand")
 )
+
+// PlanetGeometry holds the low-resolution geometry for a planet.
+type PlanetGeometry struct {
+	Altitude  [][]int
+	Material  [][]int
+	IsLoading bool
+}
+
+func (p *Planet) generateGeometry() *PlanetGeometry {
+	geom := PlanetGeometry{}
+	lonCells := 16
+	latCells := 8
+	geom.Material = make([][]int, lonCells)
+	geom.Altitude = make([][]int, lonCells)
+	for lon := 0; lon < lonCells; lon++ {
+		for lat := 0; lat < latCells; lat++ {
+			lonInd := math.Floor(float64(p.LonCells) * float64(lon) / float64(lonCells))
+			latInd := math.Floor(float64(p.LatCells) * float64(lat) / float64(latCells))
+			loc := CellLoc{Lon: float32(lonInd), Lat: float32(latInd), Alt: float32(p.AltCells - 1)}
+			m := p.Generator(p, loc)
+			for m == Air && loc.Alt > 0 {
+				loc.Alt--
+				m = p.Generator(p, loc)
+			}
+			geom.Material[lon] = append(geom.Material[lon], m)
+			geom.Altitude[lon] = append(geom.Altitude[lon], int(loc.Alt))
+		}
+	}
+	return &geom
+}
+
+// GetGeometry returns the low-resultion geometry for the planet.
+func (p *Planet) GetGeometry(async bool) *PlanetGeometry {
+	if p.Geometry != nil && p.Geometry.IsLoading {
+		return nil
+	}
+	if p.Geometry != nil {
+		return p.Geometry
+	}
+	if p.rpc != nil {
+		if async {
+			geom := PlanetGeometry{}
+			call := p.rpc.Go("API.GetPlanetGeometry", &p.ID, &geom, nil)
+			go func() {
+				call = <-call.Done
+				p.GeometryMutex.Lock()
+				p.Geometry = &geom
+				p.GeometryMutex.Unlock()
+			}()
+			p.GeometryMutex.Lock()
+			p.Geometry = &PlanetGeometry{IsLoading: true}
+			p.GeometryMutex.Unlock()
+			return p.Geometry
+		}
+		geom := PlanetGeometry{}
+		e := p.rpc.Call("API.GetPlanetGeometry", &p.ID, &geom)
+		if e != nil {
+			panic(e)
+		}
+		p.GeometryMutex.Lock()
+		p.Geometry = &geom
+		p.GeometryMutex.Unlock()
+		return p.Geometry
+	}
+	p.Geometry = p.generateGeometry()
+	return p.Geometry
+}

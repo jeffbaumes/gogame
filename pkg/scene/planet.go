@@ -19,6 +19,13 @@ type Planet struct {
 	textureUniform    int32
 	projectionUniform int32
 	sunDirUniform     int32
+
+	drawableVAO     uint32
+	pointsVBO       uint32
+	normalsVBO      uint32
+	tcoordsVBO      uint32
+	numTriangles    int32
+	geometryUpdated bool
 }
 
 // NewPlanet creates a new planet renderer
@@ -101,6 +108,13 @@ func NewPlanet(planet *common.Planet) *Planet {
 
 	gl.GenerateMipmap(gl.TEXTURE_2D)
 
+	pr.pointsVBO = newVBO()
+	pr.normalsVBO = newVBO()
+	pr.tcoordsVBO = newVBO()
+	pr.drawableVAO = newPointsNormalsTcoordsVAO(pr.pointsVBO, pr.normalsVBO, pr.tcoordsVBO)
+
+	pr.Planet.GetGeometry(true)
+
 	return &pr
 }
 
@@ -158,6 +172,11 @@ func (planetRen *Planet) Draw(player *common.Player, planetMap map[int]*Planet, 
 	gl.Uniform1i(planetRen.textureUniform, planetRen.textureUnit)
 	gl.Uniform3f(planetRen.sunDirUniform, float32(math.Sin(planetRotation)), float32(math.Cos(planetRotation)), 0)
 
+	if planetRen.Planet != player.Planet {
+		planetRen.drawGeometry()
+		return
+	}
+
 	planetRen.Planet.ChunksMutex.Lock()
 	for key, chunk := range planetRen.Planet.Chunks {
 		if chunk.WaitingForData {
@@ -174,4 +193,55 @@ func (planetRen *Planet) Draw(player *common.Player, planetMap map[int]*Planet, 
 		cr.draw()
 	}
 	planetRen.Planet.ChunksMutex.Unlock()
+}
+
+func (planetRen *Planet) updateGeometry() {
+	points := []float32{}
+	normals := []float32{}
+	tcoords := []float32{}
+
+	p := planetRen.Planet
+	geom := planetRen.Planet.Geometry
+
+	lonCells := len(geom.Altitude)
+	latCells := len(geom.Altitude[0])
+	lonWidth := p.LonCells / lonCells
+	latWidth := p.LatCells / latCells
+
+	for cLon := 0; cLon < lonCells; cLon++ {
+		for cLat := 0; cLat < latCells; cLat++ {
+			cellIndex := common.CellIndex{
+				Lon: p.LonCells * cLon / lonCells,
+				Lat: p.LatCells * cLat / latCells,
+				Alt: geom.Altitude[cLon][cLat],
+			}
+			pts, nms, tcs := generateFace(cellIndex, p, cubePosZ, cubeTcoordPosZ, lonWidth, latWidth, geom.Material[cLon][cLat])
+			points = append(points, pts...)
+			normals = append(normals, nms...)
+			tcoords = append(tcoords, tcs...)
+		}
+	}
+	planetRen.numTriangles = int32(len(points) / 3)
+	if planetRen.numTriangles > 0 {
+		fillVBO(planetRen.pointsVBO, points)
+		fillVBO(planetRen.normalsVBO, normals)
+		fillVBO(planetRen.tcoordsVBO, tcoords)
+	}
+	planetRen.geometryUpdated = true
+}
+
+func (planetRen *Planet) drawGeometry() {
+	if !planetRen.geometryUpdated {
+		planetRen.updateGeometry()
+	}
+	planetRen.Planet.GeometryMutex.Lock()
+	geom := planetRen.Planet.Geometry
+	planetRen.Planet.GeometryMutex.Unlock()
+	if geom == nil || geom.IsLoading {
+		return
+	}
+	if planetRen.numTriangles > 0 {
+		gl.BindVertexArray(planetRen.drawableVAO)
+		gl.DrawArrays(gl.TRIANGLES, 0, planetRen.numTriangles)
+	}
 }

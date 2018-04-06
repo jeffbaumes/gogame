@@ -35,6 +35,19 @@ func (api *API) GetChunk(args *common.PlanetChunkIndex, chunk *common.Chunk) err
 	return nil
 }
 
+// GetPlanetGeometry returns the low resolution geometry for a planet
+func (api *API) GetPlanetGeometry(planetID *int, geom *common.PlanetGeometry) error {
+	planet := universe.PlanetMap[*planetID]
+	if planet == nil {
+		return errors.New("Unknown planet ID")
+	}
+	g := planet.GetGeometry(false)
+	if g != nil {
+		*geom = *g
+	}
+	return nil
+}
+
 // UpdatePersonState updates a person's position
 func (api *API) UpdatePersonState(state *common.PlayerState, ret *bool) error {
 	var validPeople []*connectedPerson
