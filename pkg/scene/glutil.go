@@ -52,6 +52,19 @@ func newPointsNormalsTcoordsVAO(pointsVBO, normalsVBO, tcoordsVBO uint32) uint32
 	return vao
 }
 
+func newPointsColorsVAO(pointsVBO, colorsVBO uint32) uint32 {
+	var vao uint32
+	gl.GenVertexArrays(1, &vao)
+	gl.BindVertexArray(vao)
+	gl.EnableVertexAttribArray(0)
+	gl.BindBuffer(gl.ARRAY_BUFFER, pointsVBO)
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 0, nil)
+	gl.EnableVertexAttribArray(1)
+	gl.BindBuffer(gl.ARRAY_BUFFER, colorsVBO)
+	gl.VertexAttribPointer(1, 4, gl.FLOAT, false, 0, nil)
+	return vao
+}
+
 func newPointsNormalsVAO(pointsVBO, normalsVBO uint32) uint32 {
 	var vao uint32
 	gl.GenVertexArrays(1, &vao)

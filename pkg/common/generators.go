@@ -34,9 +34,15 @@ func init() {
 	generators["bumpy"] = func(p *Planet, loc CellLoc) int {
 		pos := p.CellLocToCartesian(loc).Normalize().Mul(float32(p.AltCells / 2))
 		scale := 0.1
-		height := float64(p.AltCells)/2 + p.noise.Eval3(float64(pos[0])*scale, float64(pos[1])*scale, float64(pos[2])*scale)*4
+		height := float64(p.AltCells)/2 + p.noise.Eval3(float64(pos[0])*scale, float64(pos[1])*scale, float64(pos[2])*scale)*8
 		if float64(loc.Alt) <= height {
-			return Stone
+			if float64(loc.Alt) > float64(p.AltCells)/2+2 {
+				return Dirt
+			}
+			return Grass
+		}
+		if float64(loc.Alt) < float64(p.AltCells)/2+1 {
+			return BlueBlock
 		}
 		return Air
 	}
@@ -111,7 +117,7 @@ func init() {
 				OrbitPlanet:     2,
 				OrbitDistance:   300,
 				OrbitSeconds:    100,
-				RotationSeconds: 10,
+				RotationSeconds: 500,
 			},
 			&PlanetState{
 				ID:              1,
@@ -121,8 +127,8 @@ func init() {
 				AltCells:        32,
 				OrbitPlanet:     0,
 				OrbitDistance:   100,
-				OrbitSeconds:    5,
-				RotationSeconds: 10,
+				OrbitSeconds:    50,
+				RotationSeconds: 500,
 			},
 			&PlanetState{
 				ID:              2,
@@ -131,7 +137,7 @@ func init() {
 				Radius:          128.0,
 				AltCells:        128,
 				OrbitPlanet:     2,
-				RotationSeconds: 9000000,
+				RotationSeconds: 500,
 			},
 		}
 	}

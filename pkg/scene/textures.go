@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 
+	"github.com/go-gl/mathgl/mgl32"
 	"github.com/jeffbaumes/gogame/pkg/common"
 )
 
@@ -25,6 +26,8 @@ func LoadTextures() *image.RGBA {
 		}
 		sx := (x % 4) * 16
 		sy := (x / 4) * 16
+		r, g, b, _ := img.At(8, 8).RGBA()
+		common.MaterialColors[x] = mgl32.Vec3{float32(r) / 0xffff, float32(g) / 0xffff, float32(b) / 0xffff}
 		draw.Draw(rgba, image.Rect(sx, sy, sx+16, sy+16), img, image.Pt(0, 0), draw.Src)
 		ImageFile.Close()
 	}

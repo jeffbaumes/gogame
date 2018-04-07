@@ -16,14 +16,17 @@ type Planet struct {
 	program           uint32
 	texture           uint32
 	textureUnit       int32
-	textureUniform    int32
 	projectionUniform int32
 	sunDirUniform     int32
 
+	chunkProgram           uint32
+	chunkProjectionUniform int32
+	chunkSunDirUniform     int32
+	chunkTextureUniform    int32
+
 	drawableVAO     uint32
 	pointsVBO       uint32
-	normalsVBO      uint32
-	tcoordsVBO      uint32
+	colorsVBO       uint32
 	numTriangles    int32
 	geometryUpdated bool
 }
@@ -31,6 +34,41 @@ type Planet struct {
 // NewPlanet creates a new planet renderer
 func NewPlanet(planet *common.Planet) *Planet {
 	const vertexShader = `
+		#version 410
+		in vec3 vp;
+		in vec4 c;
+		uniform mat4 proj;
+		uniform vec3 sundir;
+		out vec4 color;
+		out vec3 light;
+		void main() {
+			color = c;
+			gl_Position = proj * vec4(vp, 1.0);
+
+			// Apply lighting effect
+			highp vec3 ambientLight = vec3(0, 0, 0);
+			highp vec3 vpn = normalize(vp);
+			highp vec3 light1Color = vec3(0.9, 0.9, 0.9);
+			highp float light1 = max(sqrt(dot(vpn, sundir)), 0.0);
+			highp vec3 light2Color = vec3(0.2, 0.2, 0.2);
+			highp float light2 = max(sqrt(1 - dot(vpn, sundir)), 0.0);
+			highp vec3 light3Color = vec3(1.0, 0.5, 0.1);
+			highp float light3 = max(0.4 - sqrt(abs(dot(vpn, sundir))), 0.0);
+			light = ambientLight + (light1Color * light1) + (light2Color * light2) + (light3Color * light3);
+		}
+	`
+
+	const fragmentShader = `
+		#version 410
+		in vec4 color;
+		in vec3 light;
+		out vec4 frag_color;
+		void main() {
+			frag_color = color * vec4(light, 1.0);
+		}
+	`
+
+	const vertexShaderChunk = `
 		#version 410
 		in vec3 vp;
 		in vec3 n;
@@ -58,7 +96,7 @@ func NewPlanet(planet *common.Planet) *Planet {
 		}
 	`
 
-	const fragmentShader = `
+	const fragmentShaderChunk = `
 		#version 410
 		in vec3 color;
 		in vec3 light;
@@ -73,14 +111,20 @@ func NewPlanet(planet *common.Planet) *Planet {
 
 	pr := Planet{}
 	pr.Planet = planet
-	pr.program = createProgram(vertexShader, fragmentShader)
+	pr.chunkProgram = createProgram(vertexShaderChunk, fragmentShaderChunk)
 	pr.chunkRenderers = make(map[common.ChunkIndex]*chunkRenderer)
+	bindAttribute(pr.chunkProgram, 0, "vp")
+	bindAttribute(pr.chunkProgram, 1, "n")
+	bindAttribute(pr.chunkProgram, 2, "t")
+	pr.chunkProjectionUniform = uniformLocation(pr.chunkProgram, "proj")
+	pr.chunkSunDirUniform = uniformLocation(pr.chunkProgram, "sundir")
+	pr.chunkTextureUniform = uniformLocation(pr.chunkProgram, "texBase")
+
+	pr.program = createProgram(vertexShader, fragmentShader)
 	bindAttribute(pr.program, 0, "vp")
-	bindAttribute(pr.program, 1, "n")
-	bindAttribute(pr.program, 2, "t")
+	bindAttribute(pr.program, 1, "c")
 	pr.projectionUniform = uniformLocation(pr.program, "proj")
 	pr.sunDirUniform = uniformLocation(pr.program, "sundir")
-	pr.textureUniform = uniformLocation(pr.program, "texBase")
 
 	rgba := LoadTextures()
 
@@ -109,9 +153,8 @@ func NewPlanet(planet *common.Planet) *Planet {
 	gl.GenerateMipmap(gl.TEXTURE_2D)
 
 	pr.pointsVBO = newVBO()
-	pr.normalsVBO = newVBO()
-	pr.tcoordsVBO = newVBO()
-	pr.drawableVAO = newPointsNormalsTcoordsVAO(pr.pointsVBO, pr.normalsVBO, pr.tcoordsVBO)
+	pr.colorsVBO = newVBO()
+	pr.drawableVAO = newPointsColorsVAO(pr.pointsVBO, pr.colorsVBO)
 
 	pr.Planet.GetGeometry(true)
 
@@ -167,16 +210,19 @@ func (planetRen *Planet) Draw(player *common.Player, planetMap map[int]*Planet, 
 	width, height := FramebufferSize(w)
 	perspective := mgl32.Perspective(float32(60*math.Pi/180), float32(width)/float32(height), 0.01, 1000)
 	proj := perspective.Mul4(view)
-	gl.UseProgram(planetRen.program)
-	gl.UniformMatrix4fv(planetRen.projectionUniform, 1, false, &proj[0])
-	gl.Uniform1i(planetRen.textureUniform, planetRen.textureUnit)
-	gl.Uniform3f(planetRen.sunDirUniform, float32(math.Sin(planetRotation)), float32(math.Cos(planetRotation)), 0)
 
 	if planetRen.Planet != player.Planet {
+		gl.UseProgram(planetRen.program)
+		gl.UniformMatrix4fv(planetRen.projectionUniform, 1, false, &proj[0])
+		gl.Uniform3f(planetRen.sunDirUniform, float32(math.Sin(planetRotation)), float32(math.Cos(planetRotation)), 0)
 		planetRen.drawGeometry()
 		return
 	}
 
+	gl.UseProgram(planetRen.chunkProgram)
+	gl.UniformMatrix4fv(planetRen.chunkProjectionUniform, 1, false, &proj[0])
+	gl.Uniform1i(planetRen.chunkTextureUniform, planetRen.textureUnit)
+	gl.Uniform3f(planetRen.chunkSunDirUniform, float32(math.Sin(planetRotation)), float32(math.Cos(planetRotation)), 0)
 	planetRen.Planet.ChunksMutex.Lock()
 	for key, chunk := range planetRen.Planet.Chunks {
 		if chunk.WaitingForData {
@@ -198,34 +244,39 @@ func (planetRen *Planet) Draw(player *common.Player, planetMap map[int]*Planet, 
 func (planetRen *Planet) updateGeometry() {
 	points := []float32{}
 	normals := []float32{}
-	tcoords := []float32{}
+	colors := []float32{}
 
 	p := planetRen.Planet
 	geom := planetRen.Planet.Geometry
 
 	lonCells := len(geom.Altitude)
 	latCells := len(geom.Altitude[0])
-	lonWidth := p.LonCells / lonCells
-	latWidth := p.LatCells / latCells
 
-	for cLon := 0; cLon < lonCells; cLon++ {
-		for cLat := 0; cLat < latCells; cLat++ {
-			cellIndex := common.CellIndex{
-				Lon: p.LonCells * cLon / lonCells,
-				Lat: p.LatCells * cLat / latCells,
-				Alt: geom.Altitude[cLon][cLat],
-			}
-			pts, nms, tcs := generateFace(cellIndex, p, cubePosZ, cubeTcoordPosZ, lonWidth, latWidth, geom.Material[cLon][cLat])
-			points = append(points, pts...)
-			normals = append(normals, nms...)
-			tcoords = append(tcoords, tcs...)
+	appendAttributesForIndex := func(cLat, cLon int) {
+		cellIndex := common.CellIndex{
+			Lon: p.LonCells * cLon / lonCells,
+			Lat: p.LatCells * cLat / (latCells - 1),
+			Alt: geom.Altitude[cLon][cLat],
+		}
+		pt := planetRen.Planet.CellIndexToCartesian(cellIndex)
+		nm := pt.Normalize()
+		c := common.MaterialColors[geom.Material[cLon][cLat]]
+		points = append(points, pt[0], pt[1], pt[2])
+		normals = append(normals, nm[0], nm[1], nm[2])
+		colors = append(colors, c[0], c[1], c[2], 1.0)
+	}
+
+	for cLat := 0; cLat < latCells-1; cLat++ {
+		for cLon := 0; cLon < lonCells; cLon++ {
+			appendAttributesForIndex(cLat, cLon)
+			appendAttributesForIndex(cLat+1, cLon)
 		}
 	}
+
 	planetRen.numTriangles = int32(len(points) / 3)
 	if planetRen.numTriangles > 0 {
 		fillVBO(planetRen.pointsVBO, points)
-		fillVBO(planetRen.normalsVBO, normals)
-		fillVBO(planetRen.tcoordsVBO, tcoords)
+		fillVBO(planetRen.colorsVBO, colors)
 	}
 	planetRen.geometryUpdated = true
 }
@@ -242,6 +293,6 @@ func (planetRen *Planet) drawGeometry() {
 	}
 	if planetRen.numTriangles > 0 {
 		gl.BindVertexArray(planetRen.drawableVAO)
-		gl.DrawArrays(gl.TRIANGLES, 0, planetRen.numTriangles)
+		gl.DrawArrays(gl.TRIANGLE_STRIP, 0, planetRen.numTriangles)
 	}
 }

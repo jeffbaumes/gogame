@@ -499,6 +499,23 @@ var (
 		"yellow_block",
 		"yellow_sand",
 	}
+	MaterialColors = []mgl32.Vec3{
+		{0.0, 0.0, 0.0},
+		{0.5, 1.0, 0.5},
+		{0.5, 0.3, 0.0},
+		{0.5, 0.5, 0.5},
+		{0.7, 0.7, 0.7},
+		{0.4, 0.4, 0.4},
+		{1.0, 0.9, 0.5},
+		{0.5, 0.5, 1.0},
+		{0.5, 0.5, 1.0},
+		{1.0, 0.0, 1.0},
+		{1.0, 0.0, 1.0},
+		{1.0, 0.5, 0.5},
+		{1.0, 0.5, 0.5},
+		{1.0, 1.0, 0.0},
+		{1.0, 1.0, 0.0},
+	}
 	Air         = Materials.pos("air")
 	Grass       = Materials.pos("grass")
 	Dirt        = Materials.pos("dirt")
@@ -525,14 +542,17 @@ type PlanetGeometry struct {
 
 func (p *Planet) generateGeometry() *PlanetGeometry {
 	geom := PlanetGeometry{}
-	lonCells := 16
-	latCells := 8
+	lonCells := 64
+	latCells := 32 + 1
 	geom.Material = make([][]int, lonCells)
 	geom.Altitude = make([][]int, lonCells)
 	for lon := 0; lon < lonCells; lon++ {
 		for lat := 0; lat < latCells; lat++ {
 			lonInd := math.Floor(float64(p.LonCells) * float64(lon) / float64(lonCells))
-			latInd := math.Floor(float64(p.LatCells) * float64(lat) / float64(latCells))
+
+			// Make sure latitude hits both poles, hence the need for division by (latCells - 1)
+			latInd := math.Floor(float64(p.LatCells) * float64(lat) / float64(latCells-1))
+
 			loc := CellLoc{Lon: float32(lonInd), Lat: float32(latInd), Alt: float32(p.AltCells - 1)}
 			m := p.Generator(p, loc)
 			for m == Air && loc.Alt > 0 {
