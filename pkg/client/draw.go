@@ -31,6 +31,7 @@ func initGlfw() *glfw.Window {
 }
 
 func initOpenGL() {
+
 	if err := gl.Init(); err != nil {
 		panic(err)
 	}
@@ -60,7 +61,6 @@ func initOpenGL() {
 	// gl.Enable(gl.POLYGON_OFFSET_FILL)
 	// gl.PolygonOffset(2, 0)
 
-	gl.LineWidth(5)
 	gl.Enable(gl.LINE_SMOOTH)
 
 	gl.Enable(gl.BLEND)

@@ -25,6 +25,24 @@ func createProgram(vertexSource, fragmentSource string) uint32 {
 	return program
 }
 
+func createProgramNoLink(vertexSource, fragmentSource string) uint32 {
+	vertexShader, err := compileShader(vertexSource, gl.VERTEX_SHADER)
+	if err != nil {
+		panic(err)
+	}
+
+	fragmentShader, err := compileShader(fragmentSource, gl.FRAGMENT_SHADER)
+	if err != nil {
+		panic(err)
+	}
+
+	program := gl.CreateProgram()
+	gl.AttachShader(program, vertexShader)
+	gl.AttachShader(program, fragmentShader)
+
+	return program
+}
+
 func newVBO() uint32 {
 	var vbo uint32
 	gl.GenBuffers(1, &vbo)
@@ -40,15 +58,15 @@ func newPointsNormalsTcoordsVAO(pointsVBO, normalsVBO, tcoordsVBO uint32) uint32
 	var vao uint32
 	gl.GenVertexArrays(1, &vao)
 	gl.BindVertexArray(vao)
-	gl.EnableVertexAttribArray(0)
 	gl.BindBuffer(gl.ARRAY_BUFFER, pointsVBO)
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 0, nil)
-	gl.EnableVertexAttribArray(1)
+	gl.EnableVertexAttribArray(0)
 	gl.BindBuffer(gl.ARRAY_BUFFER, normalsVBO)
 	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, 0, nil)
-	gl.EnableVertexAttribArray(2)
+	gl.EnableVertexAttribArray(1)
 	gl.BindBuffer(gl.ARRAY_BUFFER, tcoordsVBO)
 	gl.VertexAttribPointer(2, 2, gl.FLOAT, false, 0, nil)
+	gl.EnableVertexAttribArray(2)
 	return vao
 }
 

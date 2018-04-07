@@ -2,7 +2,7 @@ package scene
 
 import (
 	"math"
-
+	"fmt"
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/go-gl/mathgl/mgl32"
@@ -111,18 +111,21 @@ func NewPlanet(planet *common.Planet) *Planet {
 
 	pr := Planet{}
 	pr.Planet = planet
-	pr.chunkProgram = createProgram(vertexShaderChunk, fragmentShaderChunk)
+	pr.chunkProgram = createProgramNoLink(vertexShaderChunk, fragmentShaderChunk)
 	pr.chunkRenderers = make(map[common.ChunkIndex]*chunkRenderer)
 	bindAttribute(pr.chunkProgram, 0, "vp")
 	bindAttribute(pr.chunkProgram, 1, "n")
 	bindAttribute(pr.chunkProgram, 2, "t")
+	gl.LinkProgram(pr.chunkProgram)
 	pr.chunkProjectionUniform = uniformLocation(pr.chunkProgram, "proj")
 	pr.chunkSunDirUniform = uniformLocation(pr.chunkProgram, "sundir")
 	pr.chunkTextureUniform = uniformLocation(pr.chunkProgram, "texBase")
 
-	pr.program = createProgram(vertexShader, fragmentShader)
+	pr.program = createProgramNoLink(vertexShader, fragmentShader)
 	bindAttribute(pr.program, 0, "vp")
 	bindAttribute(pr.program, 1, "c")
+	gl.LinkProgram(pr.program)
+
 	pr.projectionUniform = uniformLocation(pr.program, "proj")
 	pr.sunDirUniform = uniformLocation(pr.program, "sundir")
 
@@ -157,7 +160,7 @@ func NewPlanet(planet *common.Planet) *Planet {
 	pr.drawableVAO = newPointsColorsVAO(pr.pointsVBO, pr.colorsVBO)
 
 	pr.Planet.GetGeometry(true)
-
+	fmt.Printf("%+v\n", pr)
 	return &pr
 }
 
