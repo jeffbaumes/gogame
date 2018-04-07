@@ -3,6 +3,7 @@ package client
 import (
 	"log"
 	"math"
+	"unsafe"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
@@ -33,6 +34,25 @@ func initOpenGL() {
 	if err := gl.Init(); err != nil {
 		panic(err)
 	}
+
+	messageCallback := func(
+		source uint32,
+		gltype uint32,
+		id uint32,
+		severity uint32,
+		length int32,
+		message string,
+		userParam unsafe.Pointer,
+	) {
+		s := ""
+		if gltype == gl.DEBUG_TYPE_ERROR {
+			s = "** ERROR **"
+		}
+		log.Printf("GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n", s, gltype, severity, message)
+	}
+	gl.Enable(gl.DEBUG_OUTPUT)
+	gl.DebugMessageCallback(messageCallback, nil)
+
 	version := gl.GoStr(gl.GetString(gl.VERSION))
 	log.Println("OpenGL version", version)
 
