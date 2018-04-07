@@ -94,7 +94,7 @@ func (peopleRen *Players) Draw(player *common.Player, w *glfw.Window) {
 		fillVBO(peopleRen.normalsVBO, nms)
 
 		lookDir := player.LookDir()
-		view := mgl32.LookAtV(player.Loc, player.Loc.Add(lookDir), player.Loc.Normalize())
+		view := mgl32.LookAtV(player.Location(), player.Location().Add(lookDir), player.Location().Normalize())
 		width, height := FramebufferSize(w)
 		perspective := mgl32.Perspective(45, float32(width)/float32(height), 0.01, 1000)
 		proj := perspective.Mul4(view)

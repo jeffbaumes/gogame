@@ -192,10 +192,18 @@ func (planetRen *Planet) location(time float64, planetMap map[int]*Planet) mgl32
 
 // Draw draws the planet's visible chunks
 func (planetRen *Planet) Draw(player *common.Player, planetMap map[int]*Planet, w *glfw.Window, time float64) {
-	_, planetRotation := math.Modf(time / planetRen.Planet.RotationSeconds)
+	loc := player.Location()
+	planetRotation := time / planetRen.Planet.RotationSeconds
 	planetRotation *= 2 * math.Pi
+	orbitPosition := time / planetRen.Planet.OrbitSeconds
+	orbitPosition *= 2 * math.Pi
 	lookDir := player.LookDir()
-	view := mgl32.LookAtV(player.Loc, player.Loc.Add(lookDir), player.Loc.Normalize())
+	view := mgl32.LookAtV(loc, loc.Add(lookDir), loc.Normalize())
+	sunDir := mgl32.Vec3{
+		float32(math.Cos(planetRotation + orbitPosition)),
+		float32(math.Sin(planetRotation + orbitPosition)),
+		0,
+	}
 	if player.Planet.ID != planetRen.Planet.ID {
 		playerPlanetLoc := planetMap[player.Planet.ID].location(time, planetMap)
 		planetLoc := planetRen.location(time, planetMap)
@@ -206,6 +214,9 @@ func (planetRen *Planet) Draw(player *common.Player, planetMap map[int]*Planet, 
 		translate := mgl32.Translate3D(relativeLoc[0], relativeLoc[1], relativeLoc[2])
 		planetRotate := mgl32.HomogRotate3DZ(float32(planetRotation))
 		view = view.Mul4(playerPlanetRotate).Mul4(translate).Mul4(planetRotate)
+		sunDir = mgl32.QuatRotate(-float32(planetRotation+playerPlanetRotation), mgl32.Vec3{0, 0, 1}).Rotate(sunDir)
+		// sunDir = planetRotate.Mul4x1(mgl32.Vec4{sunDir[0], sunDir[1], sunDir[2], 1.0}).Vec3()
+		// sunDir = playerPlanetRotate.Mul4x1(mgl32.Vec4{sunDir[0], sunDir[1], sunDir[2], 1.0}).Vec3()
 	}
 	width, height := FramebufferSize(w)
 	perspective := mgl32.Perspective(float32(60*math.Pi/180), float32(width)/float32(height), 0.01, 1000)
@@ -214,7 +225,7 @@ func (planetRen *Planet) Draw(player *common.Player, planetMap map[int]*Planet, 
 	if planetRen.Planet != player.Planet {
 		gl.UseProgram(planetRen.program)
 		gl.UniformMatrix4fv(planetRen.projectionUniform, 1, false, &proj[0])
-		gl.Uniform3f(planetRen.sunDirUniform, float32(math.Sin(planetRotation)), float32(math.Cos(planetRotation)), 0)
+		gl.Uniform3f(planetRen.sunDirUniform, sunDir[0], sunDir[1], sunDir[2])
 		planetRen.drawGeometry()
 		return
 	}
@@ -222,7 +233,7 @@ func (planetRen *Planet) Draw(player *common.Player, planetMap map[int]*Planet, 
 	gl.UseProgram(planetRen.chunkProgram)
 	gl.UniformMatrix4fv(planetRen.chunkProjectionUniform, 1, false, &proj[0])
 	gl.Uniform1i(planetRen.chunkTextureUniform, planetRen.textureUnit)
-	gl.Uniform3f(planetRen.chunkSunDirUniform, float32(math.Sin(planetRotation)), float32(math.Cos(planetRotation)), 0)
+	gl.Uniform3f(planetRen.chunkSunDirUniform, sunDir[0], sunDir[1], sunDir[2])
 	planetRen.Planet.ChunksMutex.Lock()
 	for key, chunk := range planetRen.Planet.Chunks {
 		if chunk.WaitingForData {

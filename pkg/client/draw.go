@@ -52,7 +52,7 @@ func drawFrame(h float32, player *common.Player, text *scene.Text, over *scene.C
 	_, timeOfDay := math.Modf(time / planet.RotationSeconds)
 	sunAngle := timeOfDay * math.Pi * 2
 	sunDir := mgl32.Vec3{float32(math.Sin(sunAngle)), float32(math.Cos(sunAngle)), 0}
-	vpnDotSun := float64(player.Loc.Normalize().Dot(sunDir))
+	vpnDotSun := float64(player.Location().Normalize().Dot(sunDir))
 	light1Color := mgl32.Vec3{0.5, 0.7, 1.0}
 	light1 := math.Max(math.Sqrt(vpnDotSun), 0)
 	if math.IsNaN(light1) {
@@ -71,7 +71,7 @@ func drawFrame(h float32, player *common.Player, text *scene.Text, over *scene.C
 	light := light1Color.Mul(float32(light1)).Add(light2Color.Mul(float32(light2))).Add(light3Color.Mul(float32(light3)))
 
 	gl.ClearColor(light.X(), light.Y(), light.Z(), 1)
-	planet.CartesianToCellIndex(player.Loc)
+	planet.CartesianToCellIndex(player.Location())
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
 	universe.Draw(window, time)

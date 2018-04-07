@@ -185,6 +185,8 @@ func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action,
 				if player.GameMode == common.Flying {
 					player.FallVel = 0
 				}
+			case glfw.KeyK:
+				player.Apex = !player.Apex
 			case glfw.KeyP:
 				player.Planet = universe.PlanetMap[0].Planet
 				player.Spawn()
@@ -317,7 +319,7 @@ func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Ac
 	if cursorGrabbed(w) {
 		if action == glfw.Press && button == glfw.MouseButtonLeft {
 			increment := player.LookDir().Mul(0.05)
-			pos := player.Loc
+			pos := player.Location()
 			for i := 0; i < 100; i++ {
 				pos = pos.Add(increment)
 				cell := planet.CartesianToCell(pos)
@@ -342,7 +344,7 @@ func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Ac
 			}
 		} else if action == glfw.Press && button == glfw.MouseButtonRight {
 			increment := player.LookDir().Mul(0.05)
-			pos := player.Loc
+			pos := player.Location()
 			prevCellIndex := common.CellIndex{Lon: -1, Lat: -1, Alt: -1}
 			cellIndex := common.CellIndex{}
 			for i := 0; i < 100; i++ {

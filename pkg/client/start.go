@@ -104,7 +104,7 @@ func Start(username, host string, port int) {
 			var ret bool
 			cRPC.Go("API.UpdatePersonState", &common.PlayerState{
 				Name:     player.Name,
-				Position: player.Loc,
+				Position: player.Location(),
 				LookDir:  player.LookDir(),
 			}, &ret, nil)
 		}

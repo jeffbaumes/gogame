@@ -198,7 +198,7 @@ func (text *Text) Draw(player *common.Player, w *glfw.Window) {
 	gl.BindVertexArray(text.drawableVAO)
 	gl.DrawArrays(gl.TRIANGLES, 0, 6*int32(text.charCount))
 
-	r, theta, phi := mgl32.CartesianToSpherical(player.Loc)
+	r, theta, phi := mgl32.CartesianToSpherical(player.Location())
 	text.statusLine.str = fmt.Sprintf("LAT %v, LON %v, ALT %v", int(theta/math.Pi*180-90+0.5), int(phi/math.Pi*180+0.5), int(r+0.5))
 	text.computeGeometry(wi, h, 1)
 	gl.UseProgram(text.program)

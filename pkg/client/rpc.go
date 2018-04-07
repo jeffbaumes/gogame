@@ -20,7 +20,7 @@ func (api *API) SetCellMaterial(args *common.RPCSetCellMaterialArgs, ret *bool) 
 // GetPersonState returns this client's logged in user state
 func (api *API) GetPersonState(args *int, ret *common.PlayerState) error {
 	ret.Name = universe.Player.Name
-	ret.Position = universe.Player.Loc
+	ret.Position = universe.Player.Location()
 	return nil
 }
 

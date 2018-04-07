@@ -29,7 +29,7 @@ type Player struct {
 	LeftVel          float32
 	FallVel          float32
 	WalkVel          float32
-	Loc              mgl32.Vec3
+	loc              mgl32.Vec3
 	lookHeading      mgl32.Vec3
 	lookAltitude     float64
 	height           float64
@@ -48,6 +48,7 @@ type Player struct {
 	Intext           bool
 	Text             string
 	DrawText         string
+	Apex             bool
 }
 
 // HitPlayerArgs are the arguments for the HitPlayer API call
@@ -86,7 +87,7 @@ func (player *Player) Spawn() {
 	player.LeftVel = 0
 	player.FallVel = 0
 	loc := mgl32.Vec3{float32(player.Planet.Radius) + 5, 0, 0}
-	player.Loc = loc
+	player.loc = loc
 
 	// Make sure the spawn area is ready (not async)
 	player.LoadNearbyChunks(false)
@@ -98,7 +99,20 @@ func (player *Player) Spawn() {
 		c = player.Planet.CartesianToCell(loc)
 	}
 	loc[0] += 5
-	player.Loc = loc
+	player.loc = loc
+}
+
+func (player *Player) Location() mgl32.Vec3 {
+	if player.Apex {
+		return mgl32.Vec3{0, 0, 750}
+	}
+	return player.loc
+}
+
+func (player *Player) SetLocation(loc mgl32.Vec3) {
+	if !player.Apex {
+		player.loc = loc
+	}
 }
 
 // UpdateHealth updates a player health by a certain amount
@@ -114,7 +128,7 @@ func (player *Player) UpdateHealth(amount int) {
 
 // LookDir returns the player's look direction
 func (player *Player) LookDir() mgl32.Vec3 {
-	up := player.Loc.Normalize()
+	up := player.Location().Normalize()
 	player.lookHeading = ProjectToPlane(player.lookHeading, up).Normalize()
 	right := player.lookHeading.Cross(up)
 	return mgl32.QuatRotate(float32((player.lookAltitude-90.0)*math.Pi/180.0), right).Rotate(up)
@@ -123,7 +137,7 @@ func (player *Player) LookDir() mgl32.Vec3 {
 // Swivel swivels the player's direction based on mouse movement
 func (player *Player) Swivel(deltaX float64, deltaY float64) {
 	lookHeadingDelta := -0.1 * deltaX
-	normalDir := player.Loc.Normalize()
+	normalDir := player.Location().Normalize()
 	player.lookHeading = mgl32.QuatRotate(float32(lookHeadingDelta*math.Pi/180.0), normalDir).Rotate(player.lookHeading)
 	player.lookAltitude = player.lookAltitude - 0.1*deltaY
 	player.lookAltitude = math.Max(math.Min(player.lookAltitude, 89.9), -89.9)
@@ -132,8 +146,8 @@ func (player *Player) Swivel(deltaX float64, deltaY float64) {
 // LoadNearbyChunks loads the chunks around the player, either synchronously or asynchronously
 func (player *Player) LoadNearbyChunks(async bool) {
 	planet := player.Planet
-	up := player.Loc.Normalize()
-	feet := player.Loc.Sub(up.Mul(float32(player.height)))
+	up := player.Location().Normalize()
+	feet := player.Location().Sub(up.Mul(float32(player.height)))
 	ind := planet.CartesianToChunkIndex(feet)
 	for lon := ind.Lon - player.renderDistance; lon <= ind.Lon+player.renderDistance; lon++ {
 		validLon := lon
@@ -161,10 +175,10 @@ func (player *Player) UpdatePosition(h float32) {
 		h = 0.05
 	}
 
-	up := player.Loc.Normalize()
+	up := player.Location().Normalize()
 	right := player.lookHeading.Cross(up)
 	if player.GameMode == Normal {
-		feet := player.Loc.Sub(up.Mul(float32(player.height)))
+		feet := player.Location().Sub(up.Mul(float32(player.height)))
 		feetCell := planet.CartesianToCell(feet)
 		falling := feetCell == nil || feetCell.Material == Air
 		if falling {
@@ -182,7 +196,7 @@ func (player *Player) UpdatePosition(h float32) {
 		playerVel = playerVel.Add(player.lookHeading.Mul((player.ForwardVel - player.BackVel)))
 		playerVel = playerVel.Add(right.Mul((player.RightVel - player.LeftVel)))
 
-		player.Loc = player.Loc.Add(playerVel.Mul(h))
+		player.SetLocation(player.Location().Add(playerVel.Mul(h)))
 		for height := planet.AltDelta / 2; height < player.height; height += planet.AltDelta {
 			player.collide(planet, float32(height), CellLoc{Lon: 0, Lat: 0, Alt: -1})
 			player.collide(planet, float32(height), CellLoc{Lon: 1, Lat: 0, Alt: 0})
@@ -192,14 +206,14 @@ func (player *Player) UpdatePosition(h float32) {
 		}
 	} else if player.GameMode == Flying {
 		LookDir := player.LookDir()
-		player.Loc = player.Loc.Add(up.Mul((player.UpVel - player.DownVel) * h))
-		player.Loc = player.Loc.Add(LookDir.Mul((player.ForwardVel - player.BackVel) * h))
-		player.Loc = player.Loc.Add(right.Mul((player.RightVel - player.LeftVel) * h))
+		player.SetLocation(player.Location().Add(up.Mul((player.UpVel - player.DownVel) * h)))
+		player.SetLocation(player.Location().Add(LookDir.Mul((player.ForwardVel - player.BackVel) * h)))
+		player.SetLocation(player.Location().Add(right.Mul((player.RightVel - player.LeftVel) * h)))
 	}
 
 	// Update focused cell
 	increment := player.LookDir().Mul(0.05)
-	pos := player.Loc
+	pos := player.Location()
 	player.FocusCellIndex = CellIndex{Lat: 0, Lon: 0, Alt: 0}
 	for i := 0; i < 100; i++ {
 		pos = pos.Add(increment)
@@ -213,8 +227,8 @@ func (player *Player) UpdatePosition(h float32) {
 }
 
 func (player *Player) collide(p *Planet, height float32, d CellLoc) {
-	up := player.Loc.Normalize()
-	pos := player.Loc.Sub(up.Mul(float32(player.height) - height))
+	up := player.Location().Normalize()
+	pos := player.Location().Sub(up.Mul(float32(player.height) - height))
 	l := p.CartesianToCellLoc(pos)
 	c := p.CellLocToNearestCellCenter(l)
 	adjCell := p.CellLocToCell(CellLoc{
@@ -232,7 +246,7 @@ func (player *Player) collide(p *Planet, height float32, d CellLoc) {
 			distToPlane := up.Dot(pos.Sub(nLoc))
 			if distToPlane < 0 {
 				move := -distToPlane
-				player.Loc = player.Loc.Add(up.Mul(move))
+				player.SetLocation(player.Location().Add(up.Mul(move)))
 			}
 		} else {
 			nLoc := p.CellLocToCartesian(CellLoc{
@@ -250,7 +264,7 @@ func (player *Player) collide(p *Planet, height float32, d CellLoc) {
 			distToPlane := cNorm.Dot(pos.Sub(nLoc))
 			if distToPlane < float32(player.radius) {
 				move := float32(player.radius) - distToPlane
-				player.Loc = player.Loc.Add(cNorm.Mul(move))
+				player.SetLocation(player.Location().Add(cNorm.Mul(move)))
 			}
 		}
 	}
