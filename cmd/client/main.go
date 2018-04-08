@@ -59,5 +59,5 @@ func main() {
 			}
 		}
 	}
-	client.Start(name, host, port)
+	client.Start(name, host, port, nil)
 }

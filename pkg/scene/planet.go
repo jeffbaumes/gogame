@@ -213,6 +213,7 @@ func (planetRen *Planet) Draw(player *common.Player, planetMap map[int]*Planet, 
 	planetLoc := planetRen.location(time, planetMap)
 	planetRotate := mgl32.Rotate3DZ(float32(planetRotation))
 	planetRotateNeg := mgl32.Rotate3DZ(-float32(planetRotation))
+	farPlane := float32(1000)
 	if player.Planet.ID != planetRen.Planet.ID {
 		playerPlanetLoc := planetMap[player.Planet.ID].location(time, planetMap)
 		planetLoc = planetRen.location(time, planetMap)
@@ -223,9 +224,10 @@ func (planetRen *Planet) Draw(player *common.Player, planetMap map[int]*Planet, 
 		translate := mgl32.Translate3D(relativeLoc[0], relativeLoc[1], relativeLoc[2])
 		planetRotate4 := mgl32.HomogRotate3DZ(float32(planetRotation))
 		view = view.Mul4(playerPlanetRotate).Mul4(translate).Mul4(planetRotate4)
+		farPlane = 10000
 	}
 	width, height := FramebufferSize(w)
-	perspective := mgl32.Perspective(float32(60*math.Pi/180), float32(width)/float32(height), 0.01, 1000)
+	perspective := mgl32.Perspective(float32(60*math.Pi/180), float32(width)/float32(height), 0.01, farPlane)
 	proj := perspective.Mul4(view)
 
 	if planetRen.Planet != player.Planet {
