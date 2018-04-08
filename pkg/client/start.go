@@ -23,13 +23,22 @@ var (
 )
 
 // Start starts a client with the given username, host, and port
-func Start(username, host string, port int) {
-	runtime.LockOSThread()
+func Start(username, host string, port int, w *glfw.Window) {
+	if host == "" {
+		host = "localhost"
+	}
+	if port == 0 {
+		port = 5555
+	}
+	window := w
+	if w == nil {
+		runtime.LockOSThread()
 
-	window := initGlfw()
+		window = initGlfw()
+		initOpenGL()
+	}
+
 	defer glfw.Terminate()
-	initOpenGL()
-
 	conn, err := net.Dial("tcp", fmt.Sprintf("%v:%v", host, port))
 	if err != nil {
 		panic(err)

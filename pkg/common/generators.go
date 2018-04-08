@@ -14,7 +14,12 @@ func init() {
 		}
 		return Air
 	}
-
+	generators["moon"] = func(p *Planet, loc CellLoc) int {
+		if float64(loc.Alt)/float64(p.AltCells) < 0.5 {
+			return Moon
+		}
+		return Air
+	}
 	generators["sun"] = func(p *Planet, loc CellLoc) int {
 		if float64(loc.Alt)/float64(p.AltCells) < 0.5 {
 			return Sun
@@ -102,7 +107,7 @@ func init() {
 			&PlanetState{
 				ID:              1,
 				Name:            "Moon",
-				GeneratorType:   "sphere",
+				GeneratorType:   "moon",
 				Radius:          32.0,
 				AltCells:        32,
 				OrbitPlanet:     0,
@@ -123,19 +128,19 @@ func init() {
 				AltCells:        64,
 				OrbitPlanet:     2,
 				OrbitDistance:   300,
-				OrbitSeconds:    365,
-				RotationSeconds: 5,
+				OrbitSeconds:    1095,
+				RotationSeconds: 180,
 			},
 			&PlanetState{
 				ID:              1,
 				Name:            "Moon",
-				GeneratorType:   "sphere",
+				GeneratorType:   "moon",
 				Radius:          32.0,
 				AltCells:        32,
 				OrbitPlanet:     0,
 				OrbitDistance:   100,
-				OrbitSeconds:    30,
-				RotationSeconds: -30,
+				OrbitSeconds:    90,
+				RotationSeconds: -90,
 			},
 			&PlanetState{
 				ID:              2,
