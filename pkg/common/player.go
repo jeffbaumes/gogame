@@ -102,6 +102,7 @@ func (player *Player) Spawn() {
 	player.loc = loc
 }
 
+// Location returns the location of the player.
 func (player *Player) Location() mgl32.Vec3 {
 	if player.Apex {
 		return mgl32.Vec3{0, 0, 750}
@@ -109,6 +110,7 @@ func (player *Player) Location() mgl32.Vec3 {
 	return player.loc
 }
 
+// SetLocation sets the location of the player.
 func (player *Player) SetLocation(loc mgl32.Vec3) {
 	if !player.Apex {
 		player.loc = loc

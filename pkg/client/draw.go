@@ -2,11 +2,9 @@ package client
 
 import (
 	"log"
-	"math"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
-	"github.com/go-gl/mathgl/mgl32"
 	"github.com/jeffbaumes/gogame/pkg/common"
 	"github.com/jeffbaumes/gogame/pkg/scene"
 )
@@ -67,35 +65,9 @@ func initOpenGL() {
 }
 
 func drawFrame(h float32, player *common.Player, text *scene.Text, over *scene.Crosshair, peopleRen *scene.Players, focusRen *scene.FocusCell, bar *scene.Hotbar, health *scene.Health, window *glfw.Window, time float64) {
-	planet := universe.Player.Planet
-	_, timeOfDay := math.Modf(time / planet.RotationSeconds)
-	sunAngle := timeOfDay * math.Pi * 2
-	sunDir := mgl32.Vec3{float32(math.Sin(sunAngle)), float32(math.Cos(sunAngle)), 0}
-	vpnDotSun := float64(player.Location().Normalize().Dot(sunDir))
-	light1Color := mgl32.Vec3{0.5, 0.7, 1.0}
-	light1 := math.Max(math.Sqrt(vpnDotSun), 0)
-	if math.IsNaN(light1) {
-		light1 = 0
-	}
-	light2Color := mgl32.Vec3{0, 0, 0}
-	light2 := math.Max(math.Sqrt(1-vpnDotSun), 0)
-	if math.IsNaN(light2) {
-		light2 = 0
-	}
-	light3Color := mgl32.Vec3{0.7, 0.5, 0.4}
-	light3 := math.Max(0.6-math.Sqrt(math.Abs(vpnDotSun)), 0)
-	if math.IsNaN(light3) {
-		light3 = 0
-	}
-	light := light1Color.Mul(float32(light1)).Add(light2Color.Mul(float32(light2))).Add(light3Color.Mul(float32(light3)))
-
-	gl.ClearColor(light.X(), light.Y(), light.Z(), 1)
-	planet.CartesianToCellIndex(player.Location())
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
 	universe.Draw(window, time)
 	peopleRen.Draw(player, window)
-	focusRen.Draw(player, planet, window)
+	focusRen.Draw(player, universe.Player.Planet, window)
 	over.Draw(window)
 	text.Draw(player, window)
 	bar.Draw(player, window)

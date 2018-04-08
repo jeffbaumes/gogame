@@ -15,6 +15,13 @@ func init() {
 		return Air
 	}
 
+	generators["sun"] = func(p *Planet, loc CellLoc) int {
+		if float64(loc.Alt)/float64(p.AltCells) < 0.5 {
+			return Sun
+		}
+		return Air
+	}
+
 	generators["rings"] = func(p *Planet, loc CellLoc) int {
 		scale := 1.0
 		n := p.noise.Eval2(float64(loc.Alt)*scale, 0)
@@ -116,8 +123,8 @@ func init() {
 				AltCells:        64,
 				OrbitPlanet:     2,
 				OrbitDistance:   300,
-				OrbitSeconds:    100,
-				RotationSeconds: 500,
+				OrbitSeconds:    365,
+				RotationSeconds: 5,
 			},
 			&PlanetState{
 				ID:              1,
@@ -127,17 +134,17 @@ func init() {
 				AltCells:        32,
 				OrbitPlanet:     0,
 				OrbitDistance:   100,
-				OrbitSeconds:    50,
-				RotationSeconds: 500,
+				OrbitSeconds:    30,
+				RotationSeconds: -30,
 			},
 			&PlanetState{
 				ID:              2,
 				Name:            "Sun",
-				GeneratorType:   "sphere",
-				Radius:          128.0,
-				AltCells:        128,
+				GeneratorType:   "sun",
+				Radius:          64.0,
+				AltCells:        64,
 				OrbitPlanet:     2,
-				RotationSeconds: 500,
+				RotationSeconds: 1e10,
 			},
 		}
 	}

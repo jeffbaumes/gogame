@@ -2,7 +2,7 @@ package scene
 
 import (
 	"math"
-	"fmt"
+
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/go-gl/mathgl/mgl32"
@@ -17,11 +17,13 @@ type Planet struct {
 	texture           uint32
 	textureUnit       int32
 	projectionUniform int32
-	sunDirUniform     int32
+	planetLocUniform  int32
+	planetRotUniform  int32
 
 	chunkProgram           uint32
 	chunkProjectionUniform int32
-	chunkSunDirUniform     int32
+	chunkPlanetLocUniform  int32
+	chunkPlanetRotUniform  int32
 	chunkTextureUniform    int32
 
 	drawableVAO     uint32
@@ -38,16 +40,20 @@ func NewPlanet(planet *common.Planet) *Planet {
 		in vec3 vp;
 		in vec4 c;
 		uniform mat4 proj;
-		uniform vec3 sundir;
+		uniform mat3 planetrot;
+		uniform vec3 planetloc;
 		out vec4 color;
 		out vec3 light;
 		void main() {
 			color = c;
 			gl_Position = proj * vec4(vp, 1.0);
 
+			highp vec3 rotated = planetrot * vp;
+			highp vec3 sundir = normalize(planetloc + rotated);
+
 			// Apply lighting effect
 			highp vec3 ambientLight = vec3(0, 0, 0);
-			highp vec3 vpn = normalize(vp);
+			highp vec3 vpn = normalize(rotated);
 			highp vec3 light1Color = vec3(0.9, 0.9, 0.9);
 			highp float light1 = max(sqrt(dot(vpn, sundir)), 0.0);
 			highp vec3 light2Color = vec3(0.2, 0.2, 0.2);
@@ -74,18 +80,20 @@ func NewPlanet(planet *common.Planet) *Planet {
 		in vec3 n;
 		in vec2 t;
 		uniform mat4 proj;
-		uniform vec3 sundir;
-		out vec3 color;
+		uniform mat3 planetrot;
+		uniform vec3 planetloc;
 		out vec3 light;
 		out vec2 texcoord;
 		void main() {
-			color = n;
 			texcoord = t;
 			gl_Position = proj * vec4(vp, 1.0);
 
+			highp vec3 rotated = planetrot * vp;
+			highp vec3 sundir = normalize(planetloc + rotated);
+
 			// Apply lighting effect
 			highp vec3 ambientLight = vec3(0, 0, 0);
-			highp vec3 vpn = normalize(vp);
+			highp vec3 vpn = normalize(rotated);
 			highp vec3 light1Color = vec3(0.9, 0.9, 0.9);
 			highp float light1 = max(sqrt(dot(vpn, sundir)), 0.0);
 			highp vec3 light2Color = vec3(0.2, 0.2, 0.2);
@@ -98,7 +106,6 @@ func NewPlanet(planet *common.Planet) *Planet {
 
 	const fragmentShaderChunk = `
 		#version 410
-		in vec3 color;
 		in vec3 light;
 		in vec2 texcoord;
 		uniform sampler2D texBase;
@@ -118,7 +125,8 @@ func NewPlanet(planet *common.Planet) *Planet {
 	bindAttribute(pr.chunkProgram, 2, "t")
 	gl.LinkProgram(pr.chunkProgram)
 	pr.chunkProjectionUniform = uniformLocation(pr.chunkProgram, "proj")
-	pr.chunkSunDirUniform = uniformLocation(pr.chunkProgram, "sundir")
+	pr.chunkPlanetLocUniform = uniformLocation(pr.chunkProgram, "planetloc")
+	pr.chunkPlanetRotUniform = uniformLocation(pr.chunkProgram, "planetrot")
 	pr.chunkTextureUniform = uniformLocation(pr.chunkProgram, "texBase")
 
 	pr.program = createProgramNoLink(vertexShader, fragmentShader)
@@ -127,7 +135,8 @@ func NewPlanet(planet *common.Planet) *Planet {
 	gl.LinkProgram(pr.program)
 
 	pr.projectionUniform = uniformLocation(pr.program, "proj")
-	pr.sunDirUniform = uniformLocation(pr.program, "sundir")
+	pr.planetLocUniform = uniformLocation(pr.program, "planetloc")
+	pr.planetRotUniform = uniformLocation(pr.program, "planetrot")
 
 	rgba := LoadTextures()
 
@@ -160,7 +169,6 @@ func NewPlanet(planet *common.Planet) *Planet {
 	pr.drawableVAO = newPointsColorsVAO(pr.pointsVBO, pr.colorsVBO)
 
 	pr.Planet.GetGeometry(true)
-	fmt.Printf("%+v\n", pr)
 	return &pr
 }
 
@@ -202,24 +210,19 @@ func (planetRen *Planet) Draw(player *common.Player, planetMap map[int]*Planet, 
 	orbitPosition *= 2 * math.Pi
 	lookDir := player.LookDir()
 	view := mgl32.LookAtV(loc, loc.Add(lookDir), loc.Normalize())
-	sunDir := mgl32.Vec3{
-		float32(math.Cos(planetRotation + orbitPosition)),
-		float32(math.Sin(planetRotation + orbitPosition)),
-		0,
-	}
+	planetLoc := planetRen.location(time, planetMap)
+	planetRotate := mgl32.Rotate3DZ(float32(planetRotation))
+	planetRotateNeg := mgl32.Rotate3DZ(-float32(planetRotation))
 	if player.Planet.ID != planetRen.Planet.ID {
 		playerPlanetLoc := planetMap[player.Planet.ID].location(time, planetMap)
-		planetLoc := planetRen.location(time, planetMap)
+		planetLoc = planetRen.location(time, planetMap)
 		relativeLoc := playerPlanetLoc.Sub(planetLoc)
 		_, playerPlanetRotation := math.Modf(time / player.Planet.RotationSeconds)
 		playerPlanetRotation *= 2 * math.Pi
 		playerPlanetRotate := mgl32.HomogRotate3DZ(float32(playerPlanetRotation))
 		translate := mgl32.Translate3D(relativeLoc[0], relativeLoc[1], relativeLoc[2])
-		planetRotate := mgl32.HomogRotate3DZ(float32(planetRotation))
-		view = view.Mul4(playerPlanetRotate).Mul4(translate).Mul4(planetRotate)
-		sunDir = mgl32.QuatRotate(-float32(planetRotation+playerPlanetRotation), mgl32.Vec3{0, 0, 1}).Rotate(sunDir)
-		// sunDir = planetRotate.Mul4x1(mgl32.Vec4{sunDir[0], sunDir[1], sunDir[2], 1.0}).Vec3()
-		// sunDir = playerPlanetRotate.Mul4x1(mgl32.Vec4{sunDir[0], sunDir[1], sunDir[2], 1.0}).Vec3()
+		planetRotate4 := mgl32.HomogRotate3DZ(float32(planetRotation))
+		view = view.Mul4(playerPlanetRotate).Mul4(translate).Mul4(planetRotate4)
 	}
 	width, height := FramebufferSize(w)
 	perspective := mgl32.Perspective(float32(60*math.Pi/180), float32(width)/float32(height), 0.01, 1000)
@@ -228,15 +231,17 @@ func (planetRen *Planet) Draw(player *common.Player, planetMap map[int]*Planet, 
 	if planetRen.Planet != player.Planet {
 		gl.UseProgram(planetRen.program)
 		gl.UniformMatrix4fv(planetRen.projectionUniform, 1, false, &proj[0])
-		gl.Uniform3f(planetRen.sunDirUniform, sunDir[0], sunDir[1], sunDir[2])
+		gl.UniformMatrix3fv(planetRen.planetRotUniform, 1, false, &planetRotate[0])
+		gl.Uniform3f(planetRen.planetLocUniform, planetLoc[0], planetLoc[1], planetLoc[2])
 		planetRen.drawGeometry()
 		return
 	}
 
 	gl.UseProgram(planetRen.chunkProgram)
 	gl.UniformMatrix4fv(planetRen.chunkProjectionUniform, 1, false, &proj[0])
+	gl.UniformMatrix3fv(planetRen.chunkPlanetRotUniform, 1, false, &planetRotateNeg[0])
 	gl.Uniform1i(planetRen.chunkTextureUniform, planetRen.textureUnit)
-	gl.Uniform3f(planetRen.chunkSunDirUniform, sunDir[0], sunDir[1], sunDir[2])
+	gl.Uniform3f(planetRen.chunkPlanetLocUniform, planetLoc[0], planetLoc[1], planetLoc[2])
 	planetRen.Planet.ChunksMutex.Lock()
 	for key, chunk := range planetRen.Planet.Chunks {
 		if chunk.WaitingForData {
