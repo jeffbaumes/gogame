@@ -205,7 +205,7 @@ type RPCSetCellMaterialArgs struct {
 }
 
 // SetCellMaterial sets the material for a cell
-func (p *Planet) SetCellMaterial(ind CellIndex, material int) bool {
+func (p *Planet) SetCellMaterial(ind CellIndex, material int, updateServer bool) bool {
 	cell := p.CellIndexToCell(ind)
 	if cell == nil {
 		return false
@@ -214,7 +214,7 @@ func (p *Planet) SetCellMaterial(ind CellIndex, material int) bool {
 		return false
 	}
 	cell.Material = material
-	if p.rpc != nil {
+	if p.rpc != nil && updateServer {
 		var ret bool
 		p.rpc.Go("API.SetCellMaterial", RPCSetCellMaterialArgs{
 			Planet:   p.ID,

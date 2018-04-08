@@ -120,7 +120,7 @@ func (api *API) SetCellMaterial(args *common.RPCSetCellMaterialArgs, ret *bool) 
 	if planet == nil {
 		return errors.New("Unknown planet ID")
 	}
-	*ret = planet.SetCellMaterial(args.Index, args.Material)
+	*ret = planet.SetCellMaterial(args.Index, args.Material, false)
 	var validPeople []*connectedPerson
 	for _, c := range api.connectedPeople {
 		var ret bool

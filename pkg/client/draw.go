@@ -55,11 +55,6 @@ func initOpenGL() {
 	log.Println("OpenGL version", version)
 
 	gl.Enable(gl.DEPTH_TEST)
-	// gl.Enable(gl.POLYGON_OFFSET_FILL)
-	// gl.PolygonOffset(2, 0)
-
-	gl.Enable(gl.LINE_SMOOTH)
-
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 }

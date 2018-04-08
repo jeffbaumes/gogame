@@ -338,7 +338,7 @@ func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Ac
 				}
 				if cell != nil && cell.Material != common.Air {
 					cellIndex := planet.CartesianToCellIndex(pos)
-					planetRen.SetCellMaterial(cellIndex, common.Air)
+					planetRen.SetCellMaterial(cellIndex, common.Air, true)
 					break
 				}
 			}
@@ -356,7 +356,7 @@ func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Ac
 					cell := planet.CellIndexToCell(cellIndex)
 					if cell != nil && cell.Material != common.Air {
 						if prevCellIndex.Lon != -1 {
-							planetRen.SetCellMaterial(prevCellIndex, player.Hotbar[player.ActiveHotBarSlot])
+							planetRen.SetCellMaterial(prevCellIndex, player.Hotbar[player.ActiveHotBarSlot], true)
 						}
 						break
 					}

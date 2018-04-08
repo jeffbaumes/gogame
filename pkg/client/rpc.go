@@ -12,7 +12,7 @@ type API int
 
 // SetCellMaterial sets the material for a particular cell
 func (api *API) SetCellMaterial(args *common.RPCSetCellMaterialArgs, ret *bool) error {
-	universe.PlanetMap[args.Planet].SetCellMaterial(args.Index, args.Material)
+	universe.PlanetMap[args.Planet].SetCellMaterial(args.Index, args.Material, false)
 	*ret = true
 	return nil
 }

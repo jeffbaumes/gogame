@@ -173,8 +173,8 @@ func NewPlanet(planet *common.Planet) *Planet {
 }
 
 // SetCellMaterial sets the material at a particular cell and marks its chunk for redraw
-func (planetRen *Planet) SetCellMaterial(ind common.CellIndex, material int) {
-	planetRen.Planet.SetCellMaterial(ind, material)
+func (planetRen *Planet) SetCellMaterial(ind common.CellIndex, material int, updateServer bool) {
+	planetRen.Planet.SetCellMaterial(ind, material, updateServer)
 	chunkInd := planetRen.Planet.CellIndexToChunkIndex(ind)
 	chunkRen := planetRen.chunkRenderers[chunkInd]
 	if chunkRen == nil {
