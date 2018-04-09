@@ -440,7 +440,7 @@ func newChunk(ind ChunkIndex, p *Planet) *Chunk {
 	latWidth := ChunkSize / latCells
 	chunk.Cells = make([][][]*Cell, lonCells)
 	for lonIndex := 0; lonIndex < lonCells; lonIndex++ {
-		chunk.Cells[lonIndex] = make([][]*Cell, ChunkSize)
+		chunk.Cells[lonIndex] = make([][]*Cell, latCells)
 		for latIndex := 0; latIndex < latCells; latIndex++ {
 			for altIndex := 0; altIndex < ChunkSize; altIndex++ {
 				c := Cell{}

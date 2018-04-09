@@ -1,6 +1,8 @@
 package scene
 
 import (
+	"errors"
+
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/jeffbaumes/gogame/pkg/common"
@@ -75,6 +77,66 @@ func (cr *chunkRenderer) updateGeometry(planet *common.Planet, lonIndex, latInde
 	lonWidth := common.ChunkSize / lonCells
 	latWidth := common.ChunkSize / latCells
 
+	chunkPosAlt := planet.Chunks[common.ChunkIndex{Lon: lonIndex, Lat: latIndex, Alt: altIndex + 1}]
+	maxAltChunk := altIndex >= planet.AltCells/cs-1
+	chunkNegAlt := planet.Chunks[common.ChunkIndex{Lon: lonIndex, Lat: latIndex, Alt: altIndex - 1}]
+	minAltChunk := altIndex == 0
+
+	chunkPosLat := planet.Chunks[common.ChunkIndex{Lon: lonIndex, Lat: latIndex + 1, Alt: altIndex}]
+	chunkNegLat := planet.Chunks[common.ChunkIndex{Lon: lonIndex, Lat: latIndex - 1, Alt: altIndex}]
+
+	lonChunks := planet.LonCells / common.ChunkSize
+	lonPos := (lonIndex + 1) % lonChunks
+	lonNeg := lonIndex - 1
+	if lonNeg < 0 {
+		lonNeg = lonChunks - 1
+	}
+
+	chunkPosLon := planet.Chunks[common.ChunkIndex{Lon: lonPos, Lat: latIndex, Alt: altIndex}]
+	chunkNegLon := planet.Chunks[common.ChunkIndex{Lon: lonNeg, Lat: latIndex, Alt: altIndex}]
+
+	hasAirAlt := func(c *common.Chunk, lon, lat, alt int) bool {
+		if len(c.Cells) <= lonCells || len(c.Cells[0]) <= latCells {
+			lonFactor := lonCells / len(c.Cells)
+			latFactor := latCells / len(c.Cells[0])
+			return c.Cells[lon/lonFactor][lat/latFactor][alt].Material == common.Air
+		}
+		lonFactor := len(c.Cells) / lonCells
+		latFactor := len(c.Cells[0]) / latCells
+		for olon := lon * lonFactor; olon < (lon+1)*lonFactor; olon++ {
+			for olat := lat * latFactor; olat < (lat+1)*latFactor; olat++ {
+				if c.Cells[olon][olat][alt].Material == common.Air {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	hasAirLat := func(c *common.Chunk, lon, lat, alt int) bool {
+		if len(c.Cells[0]) != latCells {
+			panic(errors.New("Chunks with same lon and alt should have the same lat cells"))
+		}
+		if len(c.Cells) <= lonCells {
+			lonFactor := lonCells / len(c.Cells)
+			return c.Cells[lon/lonFactor][lat][alt].Material == common.Air
+		}
+		lonFactor := len(c.Cells) / lonCells
+		for olon := lon * lonFactor; olon < (lon+1)*lonFactor; olon++ {
+			if c.Cells[olon][lat][alt].Material == common.Air {
+				return true
+			}
+		}
+		return false
+	}
+
+	hasAirLon := func(c *common.Chunk, lon, lat, alt int) bool {
+		if len(c.Cells) != lonCells || len(c.Cells[0]) != latCells {
+			panic(errors.New("Chunks with same lat and alt should have the same cell dimensions"))
+		}
+		return c.Cells[lon][lat][alt].Material == common.Air
+	}
+
 	for cLon := 0; cLon < lonCells; cLon++ {
 		for cLat := 0; cLat < latCells; cLat++ {
 			for cAlt := 0; cAlt < cs; cAlt++ {
@@ -85,37 +147,37 @@ func (cr *chunkRenderer) updateGeometry(planet *common.Planet, lonIndex, latInde
 				}
 				cell := cr.chunk.Cells[cLon][cLat][cAlt]
 				if cell.Material != common.Air {
-					if cAlt+1 >= cs || cr.chunk.Cells[cLon][cLat][cAlt+1].Material == common.Air {
+					if (cAlt+1 >= cs && chunkPosAlt != nil && hasAirAlt(chunkPosAlt, cLon, cLat, 0)) || (cAlt+1 >= cs && maxAltChunk) || (cAlt+1 < cs && cr.chunk.Cells[cLon][cLat][cAlt+1].Material == common.Air) {
 						pts, nms, tcs := generateFace(cellIndex, planet, cubePosZ, cubeTcoordPosZ, lonWidth, latWidth, cell.Material)
 						points = append(points, pts...)
 						normals = append(normals, nms...)
 						tcoords = append(tcoords, tcs...)
 					}
-					if cAlt-1 < 0 || cr.chunk.Cells[cLon][cLat][cAlt-1].Material == common.Air {
+					if (cAlt-1 < 0 && chunkNegAlt != nil && hasAirAlt(chunkNegAlt, cLon, cLat, cs-1)) || (cAlt-1 < 0 && minAltChunk) || (cAlt-1 >= 0 && cr.chunk.Cells[cLon][cLat][cAlt-1].Material == common.Air) {
 						pts, nms, tcs := generateFace(cellIndex, planet, cubeNegZ, cubeTcoordNegZ, lonWidth, latWidth, cell.Material)
 						points = append(points, pts...)
 						normals = append(normals, nms...)
 						tcoords = append(tcoords, tcs...)
 					}
-					if cLon+1 >= lonCells || cr.chunk.Cells[cLon+1][cLat][cAlt].Material == common.Air {
+					if (cLon+1 >= lonCells && chunkPosLon != nil && hasAirLon(chunkPosLon, 0, cLat, cAlt)) || (cLon+1 < lonCells && cr.chunk.Cells[cLon+1][cLat][cAlt].Material == common.Air) {
 						pts, nms, tcs := generateFace(cellIndex, planet, cubePosX, cubeTcoordPosX, lonWidth, latWidth, cell.Material)
 						points = append(points, pts...)
 						normals = append(normals, nms...)
 						tcoords = append(tcoords, tcs...)
 					}
-					if cLon-1 < 0 || cr.chunk.Cells[cLon-1][cLat][cAlt].Material == common.Air {
+					if (cLon-1 < 0 && chunkNegLon != nil && hasAirLon(chunkNegLon, lonCells-1, cLat, cAlt)) || (cLon-1 >= 0 && cr.chunk.Cells[cLon-1][cLat][cAlt].Material == common.Air) {
 						pts, nms, tcs := generateFace(cellIndex, planet, cubeNegX, cubeTcoordNegX, lonWidth, latWidth, cell.Material)
 						points = append(points, pts...)
 						normals = append(normals, nms...)
 						tcoords = append(tcoords, tcs...)
 					}
-					if cLat+1 >= latCells || cr.chunk.Cells[cLon][cLat+1][cAlt].Material == common.Air {
+					if (cLat+1 >= latCells && chunkPosLat != nil && hasAirLat(chunkPosLat, cLon, 0, cAlt)) || (cLat+1 < latCells && cr.chunk.Cells[cLon][cLat+1][cAlt].Material == common.Air) {
 						pts, nms, tcs := generateFace(cellIndex, planet, cubePosY, cubeTcoordPosY, lonWidth, latWidth, cell.Material)
 						points = append(points, pts...)
 						normals = append(normals, nms...)
 						tcoords = append(tcoords, tcs...)
 					}
-					if cLat-1 < 0 || cr.chunk.Cells[cLon][cLat-1][cAlt].Material == common.Air {
+					if (cLat-1 < 0 && chunkNegLat != nil && hasAirLat(chunkNegLat, cLon, latCells-1, cAlt)) || (cLat-1 >= 0 && cr.chunk.Cells[cLon][cLat-1][cAlt].Material == common.Air) {
 						pts, nms, tcs := generateFace(cellIndex, planet, cubeNegY, cubeTcoordNegY, lonWidth, latWidth, cell.Material)
 						points = append(points, pts...)
 						normals = append(normals, nms...)
