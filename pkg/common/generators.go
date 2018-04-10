@@ -153,4 +153,44 @@ func init() {
 			},
 		}
 	}
+
+	systems["many"] = func() []*PlanetState {
+		planets := []*PlanetState{
+			&PlanetState{
+				ID:              0,
+				Name:            "Sun",
+				GeneratorType:   "sun",
+				Radius:          64.0,
+				AltCells:        64,
+				OrbitPlanet:     0,
+				RotationSeconds: 1e10,
+			},
+		}
+		for i := 0; i < 100; i++ {
+			planets = append(planets, &PlanetState{
+				ID:              2*i + 1,
+				Name:            "Spawn",
+				GeneratorType:   "sphere",
+				Radius:          32.0,
+				AltCells:        32,
+				OrbitPlanet:     0,
+				OrbitDistance:   70 * float64(i+1),
+				OrbitSeconds:    10 + float64(i),
+				RotationSeconds: 1e10,
+			})
+			planets = append(planets, &PlanetState{
+				ID:              2*i + 2,
+				Name:            "Spawn",
+				GeneratorType:   "sphere",
+				Radius:          16.0,
+				AltCells:        16,
+				OrbitPlanet:     2*i + 1,
+				OrbitDistance:   30,
+				OrbitSeconds:    5,
+				RotationSeconds: 1e10,
+			})
+		}
+		return planets
+	}
+
 }

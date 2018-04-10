@@ -180,7 +180,59 @@ func (planetRen *Planet) SetCellMaterial(ind common.CellIndex, material int, upd
 	if chunkRen == nil {
 		return
 	}
+
+	// Mark the chunk's geometry to be recalculated
 	chunkRen.geometryUpdated = false
+
+	lonCells := len(chunkRen.chunk.Cells)
+	latCells := len(chunkRen.chunk.Cells[0])
+	lonFactor := common.ChunkSize / lonCells
+	latFactor := common.ChunkSize / latCells
+
+	// If the cell is along a chunk edge, also mark the adjacent chunk dirty
+	if (ind.Lon%common.ChunkSize)/lonFactor == 0 {
+		lonChunks := planetRen.Planet.LonCells / common.ChunkSize
+		lonNeg := chunkInd.Lon - 1
+		if lonNeg < 0 {
+			lonNeg = lonChunks - 1
+		}
+		cr := planetRen.chunkRenderers[common.ChunkIndex{Lon: lonNeg, Lat: chunkInd.Lat, Alt: chunkInd.Alt}]
+		if cr != nil {
+			cr.geometryUpdated = false
+		}
+	}
+	if (ind.Lon%common.ChunkSize)/lonFactor == lonCells-1 {
+		lonChunks := planetRen.Planet.LonCells / common.ChunkSize
+		lonPos := (chunkInd.Lon + 1) % lonChunks
+		cr := planetRen.chunkRenderers[common.ChunkIndex{Lon: lonPos, Lat: chunkInd.Lat, Alt: chunkInd.Alt}]
+		if cr != nil {
+			cr.geometryUpdated = false
+		}
+	}
+	if (ind.Lat%common.ChunkSize)/latFactor == 0 {
+		cr := planetRen.chunkRenderers[common.ChunkIndex{Lon: chunkInd.Lon, Lat: chunkInd.Lat - 1, Alt: chunkInd.Alt}]
+		if cr != nil {
+			cr.geometryUpdated = false
+		}
+	}
+	if (ind.Lat%common.ChunkSize)/latFactor == latCells-1 {
+		cr := planetRen.chunkRenderers[common.ChunkIndex{Lon: chunkInd.Lon, Lat: chunkInd.Lat + 1, Alt: chunkInd.Alt}]
+		if cr != nil {
+			cr.geometryUpdated = false
+		}
+	}
+	if ind.Alt%common.ChunkSize == 0 {
+		cr := planetRen.chunkRenderers[common.ChunkIndex{Lon: chunkInd.Lon, Lat: chunkInd.Lat, Alt: chunkInd.Alt - 1}]
+		if cr != nil {
+			cr.geometryUpdated = false
+		}
+	}
+	if ind.Alt%common.ChunkSize == common.ChunkSize-1 {
+		cr := planetRen.chunkRenderers[common.ChunkIndex{Lon: chunkInd.Lon, Lat: chunkInd.Lat, Alt: chunkInd.Alt + 1}]
+		if cr != nil {
+			cr.geometryUpdated = false
+		}
+	}
 }
 
 func (planetRen *Planet) location(time float64, planetMap map[int]*Planet) mgl32.Vec3 {
@@ -213,6 +265,7 @@ func (planetRen *Planet) Draw(player *common.Player, planetMap map[int]*Planet, 
 	planetLoc := planetRen.location(time, planetMap)
 	planetRotate := mgl32.Rotate3DZ(float32(planetRotation))
 	planetRotateNeg := mgl32.Rotate3DZ(-float32(planetRotation))
+	farPlane := float32(1000)
 	if player.Planet.ID != planetRen.Planet.ID {
 		playerPlanetLoc := planetMap[player.Planet.ID].location(time, planetMap)
 		planetLoc = planetRen.location(time, planetMap)
@@ -223,9 +276,10 @@ func (planetRen *Planet) Draw(player *common.Player, planetMap map[int]*Planet, 
 		translate := mgl32.Translate3D(relativeLoc[0], relativeLoc[1], relativeLoc[2])
 		planetRotate4 := mgl32.HomogRotate3DZ(float32(planetRotation))
 		view = view.Mul4(playerPlanetRotate).Mul4(translate).Mul4(planetRotate4)
+		farPlane = 10000
 	}
 	width, height := FramebufferSize(w)
-	perspective := mgl32.Perspective(float32(60*math.Pi/180), float32(width)/float32(height), 0.01, 1000)
+	perspective := mgl32.Perspective(float32(60*math.Pi/180), float32(width)/float32(height), 0.01, farPlane)
 	proj := perspective.Mul4(view)
 
 	if planetRen.Planet != player.Planet {

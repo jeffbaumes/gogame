@@ -191,11 +191,25 @@ func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action,
 			case glfw.KeyP:
 				player.Planet = universe.PlanetMap[0].Planet
 				player.Spawn()
-			case glfw.KeyLeftBracket:
-				player.Planet = universe.PlanetMap[1].Planet
-				player.Spawn()
 			case glfw.KeyRightBracket:
-				player.Planet = universe.PlanetMap[2].Planet
+				id := player.Planet.ID + 1
+				if universe.PlanetMap[id] == nil {
+					id = 0
+				}
+				player.Planet = universe.PlanetMap[id].Planet
+				player.Spawn()
+			case glfw.KeyLeftBracket:
+				id := player.Planet.ID - 1
+				if universe.PlanetMap[id] == nil {
+					if id < 0 {
+						for i := range universe.PlanetMap {
+							if i > id {
+								id = i
+							}
+						}
+					}
+				}
+				player.Planet = universe.PlanetMap[id].Planet
 				player.Spawn()
 			case glfw.KeyEscape:
 				w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
