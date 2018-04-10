@@ -205,11 +205,11 @@ func main() {
 			saveProfile()
 			saveProfileFile()
 			if profiles[ui.profile].world == "" {
-				client.Start(profiles[ui.profile].name, profiles[ui.profile].host, profiles[ui.profile].port, w)
+				client.Start(profiles[ui.profile].name, profiles[ui.profile].host, profiles[ui.profile].port, screen)
 			} else if profiles[ui.profile].world != "" {
 				go server.Start(profiles[ui.profile].world, 123, profiles[ui.profile].port)
 				time.Sleep(time.Second)
-				client.Start(profiles[ui.profile].name, profiles[ui.profile].host, profiles[ui.profile].port, w)
+				client.Start(profiles[ui.profile].name, profiles[ui.profile].host, profiles[ui.profile].port, screen)
 			}
 		}
 	}

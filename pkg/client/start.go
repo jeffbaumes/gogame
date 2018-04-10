@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/anbcodes/goguigl/gui"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/hashicorp/yamux"
 	"github.com/jeffbaumes/gogame/pkg/common"
@@ -20,18 +21,21 @@ const (
 
 var (
 	universe *scene.Universe
+	screen   *gui.Screen
 )
 
 // Start starts a client with the given username, host, and port
-func Start(username, host string, port int, w *glfw.Window) {
+func Start(username, host string, port int, scr *gui.Screen) {
+	screen = scr
+	screen.Clear()
 	if host == "" {
 		host = "localhost"
 	}
 	if port == 0 {
 		port = 5555
 	}
-	window := w
-	if w == nil {
+	window := screen.Window
+	if screen.Window == nil {
 		runtime.LockOSThread()
 
 		window = initGlfw()
@@ -73,7 +77,7 @@ func Start(username, host string, port int, w *glfw.Window) {
 	player.Spawn()
 
 	over := scene.NewCrosshair()
-	text := scene.NewText()
+	text := &scene.Text{}
 	bar := scene.NewHotbar()
 	health := scene.NewHealth()
 
@@ -104,7 +108,7 @@ func Start(username, host string, port int, w *glfw.Window) {
 		t = time.Now()
 		elapsedSeconds := float64(time.Since(startTime)) / float64(time.Second)
 
-		drawFrame(h, player, text, over, peopleRen, focusRen, bar, health, window, elapsedSeconds)
+		drawFrame(h, player, text, over, peopleRen, focusRen, bar, health, screen, elapsedSeconds)
 
 		player.UpdatePosition(h)
 
@@ -117,7 +121,6 @@ func Start(username, host string, port int, w *glfw.Window) {
 				LookDir:  player.LookDir(),
 			}, &ret, nil)
 		}
-
 		time.Sleep(time.Second/time.Duration(targetFPS) - time.Since(t))
 	}
 }

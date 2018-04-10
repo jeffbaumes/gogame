@@ -38,26 +38,27 @@ func glToPixel(w *glfw.Window, xpos, ypos float64) (xpix, ypix float64) {
 	return float64(winw) * (xpos + 1) / 2, float64(winh) * (-ypos + 1) / 2
 }
 
-func sendText(text string) {
-	if text == "enter" {
-		universe.Player.Intext = false
-		// NewText()
-		var ret bool
-		universe.RPC.Go("API.SendText", universe.Player.Text, &ret, nil)
-		universe.Player.Text = ""
-		// need to send text to server
-	} else if text == "delete" {
-		if len(universe.Player.Text) != 0 {
-			universe.Player.Text = universe.Player.Text[0:(len(universe.Player.Text) - 1)]
-		}
-	} else {
-		universe.Player.Text = universe.Player.Text + text
-	}
-}
-
+// func sendText(text string) {
+// 	if text == "enter" {
+// 		universe.Player.Intext = false
+// 		// NewText()
+// 		var ret bool
+// 		universe.RPC.Go("API.SendText", universe.Player.Text, &ret, nil)
+// 		universe.Player.Text = ""
+// 		// need to send text to server
+// 	} else if text == "delete" {
+// 		if len(universe.Player.Text) != 0 {
+// 			universe.Player.Text = universe.Player.Text[0:(len(universe.Player.Text) - 1)]
+// 		}
+// 	} else {
+// 		universe.Player.Text = universe.Player.Text + text
+// 	}
+// }
 func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
+	guikeycallback := screen.KeyCallBack()
+	guikeycallback(w, key, scancode, action, mods)
 	player := universe.Player
-	if action == glfw.Press && key == glfw.KeyO {
+	if action == glfw.Press && key == glfw.KeyO && !player.Intext {
 		player.Spawn()
 	}
 	if player.InInventory {
@@ -222,91 +223,10 @@ func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action,
 			switch key {
 			case glfw.KeyEscape:
 				player.Intext = false
-			case glfw.Key1:
-				sendText("1")
-			case glfw.Key2:
-				sendText("2")
-			case glfw.Key3:
-				sendText("3")
-			case glfw.Key4:
-				sendText("4")
-			case glfw.Key5:
-				sendText("5")
-			case glfw.Key6:
-				sendText("6")
-			case glfw.Key7:
-				sendText("7")
-			case glfw.Key8:
-				sendText("8")
-			case glfw.Key9:
-				sendText("9")
-			case glfw.Key0:
-				sendText("0")
-			case glfw.KeyQ:
-				sendText("q")
-			case glfw.KeyW:
-				sendText("w")
-			case glfw.KeyE:
-				sendText("e")
-			case glfw.KeyR:
-				sendText("r")
-			case glfw.KeyT:
-				sendText("t")
-			case glfw.KeyY:
-				sendText("y")
-			case glfw.KeyU:
-				sendText("u")
-			case glfw.KeyI:
-				sendText("i")
-			case glfw.KeyO:
-				sendText("o")
-			case glfw.KeyP:
-				sendText("p")
-			case glfw.KeyA:
-				sendText("a")
-			case glfw.KeyS:
-				sendText("s")
-			case glfw.KeyD:
-				sendText("d")
-			case glfw.KeyF:
-				sendText("f")
-			case glfw.KeyG:
-				sendText("g")
-			case glfw.KeyH:
-				sendText("h")
-			case glfw.KeyJ:
-				sendText("j")
-			case glfw.KeyK:
-				sendText("k")
-			case glfw.KeyL:
-				sendText("l")
-			case glfw.KeyZ:
-				sendText("z")
-			case glfw.KeyX:
-				sendText("x")
-			case glfw.KeyC:
-				sendText("c")
-			case glfw.KeyV:
-				sendText("v")
-			case glfw.KeyB:
-				sendText("b")
-			case glfw.KeyN:
-				sendText("n")
-			case glfw.KeyM:
-				sendText("m")
-			case glfw.KeyEnter:
-				sendText("enter")
-			case glfw.KeyDelete:
-				sendText("delete")
-			case glfw.KeyBackspace:
-				sendText("delete")
-			case glfw.KeySpace:
-				sendText(" ")
 			}
 		}
 	}
 }
-
 func windowSizeCallback(w *glfw.Window, wd, ht int) {
 	fwidth, fheight := scene.FramebufferSize(w)
 	gl.Viewport(0, 0, int32(fwidth), int32(fheight))

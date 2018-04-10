@@ -3,6 +3,7 @@ package client
 import (
 	"log"
 
+	"github.com/anbcodes/goguigl/gui"
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/jeffbaumes/gogame/pkg/common"
@@ -59,15 +60,16 @@ func initOpenGL() {
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 }
 
-func drawFrame(h float32, player *common.Player, text *scene.Text, over *scene.Crosshair, peopleRen *scene.Players, focusRen *scene.FocusCell, bar *scene.Hotbar, health *scene.Health, window *glfw.Window, time float64) {
-	universe.Draw(window, time)
-	peopleRen.Draw(player, window)
-	focusRen.Draw(player, universe.Player.Planet, window)
-	over.Draw(window)
-	text.Draw(player, window)
-	bar.Draw(player, window)
-	health.Draw(player, window)
-
+func drawFrame(h float32, player *common.Player, text *scene.Text, over *scene.Crosshair, peopleRen *scene.Players, focusRen *scene.FocusCell, bar *scene.Hotbar, health *scene.Health, screen *gui.Screen, time float64) {
+	universe.Draw(screen.Window, time)
+	peopleRen.Draw(player, screen.Window)
+	focusRen.Draw(player, universe.Player.Planet, screen.Window)
+	over.Draw(screen.Window)
+	text.Draw(player, screen, universe)
+	bar.Draw(player, screen.Window)
+	health.Draw(player, screen.Window)
+	screen.Update()
 	glfw.PollEvents()
-	window.SwapBuffers()
+	screen.Window.SwapBuffers()
+
 }

@@ -3,9 +3,12 @@ package server
 import (
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/rpc"
+	"os"
+	"strings"
 
 	"github.com/hashicorp/yamux"
 	"github.com/jeffbaumes/gogame/pkg/common"
@@ -15,6 +18,45 @@ import (
 var (
 	universe *common.Universe
 )
+
+type server struct {
+	system string
+}
+
+func writefile(t string) {
+
+	err := ioutil.WriteFile("server.gogame", []byte(t), 0644)
+	if err != nil {
+		panic(err)
+	}
+}
+func readfile() string {
+
+	// read the whole file at once
+	b, err := ioutil.ReadFile("server.gogame")
+	if err != nil {
+		os.Create("server.gogame")
+		return readfile()
+	}
+	// write the whole body at once
+	// err := ioutil.WriteFile("profils.txt", []byte(t), 0644)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	return string(b)
+}
+
+func getsystem() (f5 string) {
+	f2 := readfile()
+	f := strings.Split(f2, ";")
+	for _, f3 := range f {
+		f4 := strings.Split(f3, "=")
+		if f4[0] == "system" {
+			f5 = f4[1]
+		}
+	}
+	return
+}
 
 // Start takes a name, seed, and port and starts the universe server
 func Start(name string, seed, port int) {
@@ -39,7 +81,7 @@ func Start(name string, seed, port int) {
 	_, err = stmt.Exec()
 	checkErr(err)
 
-	universe = common.NewUniverse(db, "sun-moon")
+	universe = common.NewUniverse(db, getsystem())
 
 	api := new(API)
 	listener, e := net.Listen("tcp", fmt.Sprintf(":%v", port))
