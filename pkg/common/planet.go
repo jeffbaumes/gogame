@@ -498,6 +498,7 @@ var (
 		"red_sand",
 		"yellow_block",
 		"yellow_sand",
+		"water",
 	}
 	MaterialColors = []mgl32.Vec3{
 		{0.0, 0.0, 0.0},
@@ -515,6 +516,7 @@ var (
 		{1.0, 0.5, 0.5},
 		{1.0, 1.0, 0.0},
 		{1.0, 1.0, 0.0},
+		{0.0, 0.0, 0.0},
 	}
 	Air         = Materials.pos("air")
 	Grass       = Materials.pos("grass")
@@ -531,6 +533,7 @@ var (
 	RedSand     = Materials.pos("red_sand")
 	YellowBlock = Materials.pos("yellow_block")
 	YellowSand  = Materials.pos("yellow_sand")
+	Water       = Materials.pos("water")
 )
 
 // PlanetGeometry holds the low-resolution geometry for a planet.

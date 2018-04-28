@@ -60,12 +60,13 @@ func initOpenGL() {
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 }
 
-func drawFrame(h float32, player *common.Player, text *scene.Text, over *scene.Crosshair, peopleRen *scene.Players, focusRen *scene.FocusCell, bar *scene.Hotbar, health *scene.Health, screen *gui.Screen, time float64) {
+func drawFrame(h float32, player *common.Player, text *scene.Text, over *scene.Crosshair, peopleRen *scene.Players, focusRen *scene.FocusCell, bar *scene.Hotbar, health *scene.Health, screen *gui.Screen, time float64, op *scene.Options) {
 	universe.Draw(screen.Window, time)
 	peopleRen.Draw(player, screen.Window)
 	focusRen.Draw(player, universe.Player.Planet, screen.Window)
 	over.Draw(screen.Window)
 	text.Draw(player, screen, universe)
+	op.Draw(player)
 	bar.Draw(player, screen.Window)
 	health.Draw(player, screen.Window)
 	screen.Update()

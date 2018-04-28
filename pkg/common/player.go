@@ -40,15 +40,17 @@ type Player struct {
 	Name             string
 	ActiveHotBarSlot int
 	FocusCellIndex   CellIndex
-	InInventory      bool
-	HotbarOn         bool
-	Hotbar           [12]int
-	renderDistance   int
-	Health           int
-	Intext           bool
-	Text             string
-	DrawText         string
-	Apex             bool
+	// InInventory      bool
+	HotbarOn       bool
+	Hotbar         [12]int
+	renderDistance int
+	Health         int
+	// Intext         bool
+	Text     string
+	DrawText string
+	// Apex     bool
+	// InOptions        bool
+	Mode string
 }
 
 // HitPlayerArgs are the arguments for the HitPlayer API call
@@ -104,7 +106,7 @@ func (player *Player) Spawn() {
 
 // Location returns the location of the player.
 func (player *Player) Location() mgl32.Vec3 {
-	if player.Apex {
+	if player.Mode == "Apex" {
 		return mgl32.Vec3{0, 0, 750}
 	}
 	return player.loc
@@ -112,7 +114,7 @@ func (player *Player) Location() mgl32.Vec3 {
 
 // SetLocation sets the location of the player.
 func (player *Player) SetLocation(loc mgl32.Vec3) {
-	if !player.Apex {
+	if !(player.Mode == "Apex") {
 		player.loc = loc
 	}
 }

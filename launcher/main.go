@@ -93,15 +93,16 @@ func main() {
 	w.SetKeyCallback(guikeycallback)
 	// normal := profiles
 	// gui.NewEntry(screen, "", 0, 0, 0.5, 1, 0.1, world)
-	play := gui.NewButton(screen, "PLAY", -0.5, 0.6, 1, 0.3, 0.1, nil)
-	namee := gui.NewEntry(screen, "", -0.55, 0.2, 0.5, 0.2, 0.05, nil)
+	play := gui.NewButton(screen, "PLAY", -0.85, 0.6, 0.85, 0.3, 0.1, nil)
+	serverb := gui.NewButton(screen, "PLAY ON SERVER", 0.05, 0.6, 0.85, 0.3, 0.1, nil)
+	namee := gui.NewEntry(screen, "", -0.55, 0.2, 0.5, 0.2, 0.05, nil, false)
 	gui.NewLabel(screen, "Name", -0.41, 0.45, 0.1)
-	worlde := gui.NewEntry(screen, "", 0.05, 0.2, 0.5, 0.2, 0.05, nil)
+	worlde := gui.NewEntry(screen, "", 0.05, 0.2, 0.5, 0.2, 0.05, nil, false)
 	gui.NewLabel(screen, "World", 0.18, 0.45, 0.1)
-	porte := gui.NewEntry(screen, "", 0.05, -0.17, 0.5, 0.2, 0.05, nil)
+	porte := gui.NewEntry(screen, "", 0.05, -0.17, 0.5, 0.2, 0.05, nil, false)
 	gui.NewLabel(screen, "Port", 0.2, 0.08, 0.1)
 	defaulte := gui.NewButton(screen, "", -0.25, -0.4, 0.5, 0.2, 0.05, nil)
-	hoste := gui.NewEntry(screen, "", -0.55, -0.17, 0.5, 0.2, 0.05, nil)
+	hoste := gui.NewEntry(screen, "", -0.55, -0.17, 0.5, 0.2, 0.05, nil, false)
 	gui.NewLabel(screen, "Host", -0.41, 0.08, 0.1)
 	pickpro := gui.NewButton(screen, "Switch profile", -0.95, -0.95, 0.4, 0.2, 0.05, nil)
 	message := gui.NewLabel(screen, "", -0.5, -0.95, 0.1)
@@ -138,7 +139,11 @@ func main() {
 		}
 		profiles[ui.profile].host = hoste.Text
 	}
+	connecttoserver := func() {
+		client.Start(profiles[ui.profile].name, "friends123.tk", 1234, screen)
 
+	}
+	serverb.Command = connecttoserver
 	newp := func() {
 		message.Text = "Successfully created profile."
 		profiles = append(profiles, &profile{})

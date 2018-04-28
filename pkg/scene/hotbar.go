@@ -105,7 +105,7 @@ func (h *Hotbar) computeGeometry(player *common.Player, width, height int) {
 		}
 		points = append(points, pts...)
 	}
-	if player.InInventory {
+	if player.Mode == "Inventory" {
 		for m := 1; m < len(common.Materials); m++ {
 			mx := float32(m % 4)
 			my := float32(m / 4)

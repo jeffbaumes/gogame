@@ -22,6 +22,7 @@ const (
 var (
 	universe *scene.Universe
 	screen   *gui.Screen
+	op       *scene.Options
 )
 
 // Start starts a client with the given username, host, and port
@@ -73,6 +74,7 @@ func Start(username, host string, port int, scr *gui.Screen) {
 		universe.AddPlanet(planetRen)
 	}
 
+	op = scene.NewOptions(screen)
 	player.Planet = universe.PlanetMap[0].Planet
 	player.Spawn()
 
@@ -80,7 +82,7 @@ func Start(username, host string, port int, scr *gui.Screen) {
 	text := &scene.Text{}
 	bar := scene.NewHotbar()
 	health := scene.NewHealth()
-
+	player.Mode = "Play"
 	// Setup server connection
 	smuxConn, e := cmux.Accept()
 	if e != nil {
@@ -108,7 +110,7 @@ func Start(username, host string, port int, scr *gui.Screen) {
 		t = time.Now()
 		elapsedSeconds := float64(time.Since(startTime)) / float64(time.Second)
 
-		drawFrame(h, player, text, over, peopleRen, focusRen, bar, health, screen, elapsedSeconds)
+		drawFrame(h, player, text, over, peopleRen, focusRen, bar, health, screen, elapsedSeconds, op)
 
 		player.UpdatePosition(h)
 

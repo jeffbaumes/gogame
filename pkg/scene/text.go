@@ -31,17 +31,17 @@ func (text *Text) Draw(player *common.Player, screen *gui.Screen, u *Universe) {
 		}
 
 		texte = gui.NewEntry(screen, "", -0.75, -0.85, 1.5, 0.2, 0.04, func() {
-			player.Intext = false
+			player.Mode = "Play"
 			// NewText()
 			var ret bool
 			u.RPC.Go("API.SendText", fmt.Sprintf("%v: %v", player.Name, texte.Text), &ret, nil)
 			texte.Text = ""
 			// player.Text = ""
-		})
+		}, false)
 		o = 1
 	}
 	tex1.Text = fmt.Sprintf("LAT %v, LON %v, ALT %v", int(theta/math.Pi*180-90+0.5), int(phi/math.Pi*180+0.5), int(r+0.5))
-	if player.Intext == true {
+	if player.Mode == "Text" {
 		texte.Y = -0.85
 		// println("worked")
 		texte.Focus = true
