@@ -1,0 +1,1 @@
+forward=;backward=;left=;right=;inventory=;run=;flyrun=;up=;down=;build=;destroy=0
