@@ -70,15 +70,15 @@ func keyCallbackPlay(w *glfw.Window, key glfw.Key, scancode int, action glfw.Act
 	switch action {
 	case glfw.Press:
 		switch key {
+		case glfw.KeyEscape:
+			player.Mode = "Options"
+			w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 		case op.InSky:
 			player.Mode = "Apex"
 		case op.OpText:
 			player.Mode = "Text"
 		case op.Inventory:
 			player.Mode = "Inventory"
-			w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
-		case glfw.KeyEscape:
-			player.Mode = "Options"
 			w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 		case op.Forwards:
 			player.ForwardVel = player.WalkVel

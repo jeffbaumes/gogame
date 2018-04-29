@@ -76,7 +76,6 @@ func getprofiles() []*profile {
 	return prof
 }
 func main() {
-	// println(gl.LESS)
 	profiles := getprofiles()
 	ui := ui{}
 	runtime.LockOSThread()
@@ -91,18 +90,16 @@ func main() {
 	w.SetMouseButtonCallback(guimousebuttoncallback)
 	w.SetCursorPosCallback(guicursorposcallback)
 	w.SetKeyCallback(guikeycallback)
-	// normal := profiles
-	// gui.NewEntry(screen, "", 0, 0, 0.5, 1, 0.1, world)
 	play := gui.NewButton(screen, "PLAY", -0.85, 0.6, 0.85, 0.3, 0.1, nil)
 	serverb := gui.NewButton(screen, "PLAY ON SERVER", 0.05, 0.6, 0.85, 0.3, 0.1, nil)
-	namee := gui.NewEntry(screen, "", -0.55, 0.2, 0.5, 0.2, 0.05, nil, false)
+	namee := gui.NewEntry(screen, "", -0.55, 0.2, 0.5, 0.2, 0.05, nil)
 	gui.NewLabel(screen, "Name", -0.41, 0.45, 0.1)
-	worlde := gui.NewEntry(screen, "", 0.05, 0.2, 0.5, 0.2, 0.05, nil, false)
+	worlde := gui.NewEntry(screen, "", 0.05, 0.2, 0.5, 0.2, 0.05, nil)
 	gui.NewLabel(screen, "World", 0.18, 0.45, 0.1)
-	porte := gui.NewEntry(screen, "", 0.05, -0.17, 0.5, 0.2, 0.05, nil, false)
+	porte := gui.NewEntry(screen, "", 0.05, -0.17, 0.5, 0.2, 0.05, nil)
 	gui.NewLabel(screen, "Port", 0.2, 0.08, 0.1)
 	defaulte := gui.NewButton(screen, "", -0.25, -0.4, 0.5, 0.2, 0.05, nil)
-	hoste := gui.NewEntry(screen, "", -0.55, -0.17, 0.5, 0.2, 0.05, nil, false)
+	hoste := gui.NewEntry(screen, "", -0.55, -0.17, 0.5, 0.2, 0.05, nil)
 	gui.NewLabel(screen, "Host", -0.41, 0.08, 0.1)
 	pickpro := gui.NewButton(screen, "Switch profile", -0.95, -0.95, 0.4, 0.2, 0.05, nil)
 	message := gui.NewLabel(screen, "", -0.5, -0.95, 0.1)
@@ -223,12 +220,9 @@ func main() {
 	loadProfile()
 	saveProfile()
 
-	// gui.NewLabel(screen, "Hello World", 0.5, 0.5, 0.1)
-	// gl.DepthFunc(gl.LEQUAL)
 	for !w.ShouldClose() {
 		gl.ClearColor(0.498, 1.000, 0.831, 1)
 		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-		// b.Draw()
 		screen.Update()
 		glfw.PollEvents()
 		w.SwapBuffers()
@@ -236,24 +230,17 @@ func main() {
 }
 
 func writefile(t string) {
-
 	err := ioutil.WriteFile("profiles.txt", []byte(t), 0644)
 	if err != nil {
 		panic(err)
 	}
 }
-func readfile() string {
 
-	// read the whole file at once
+func readfile() string {
 	b, err := ioutil.ReadFile("profiles.txt")
 	if err != nil {
 		os.Create("profiles.txt")
 		return readfile()
 	}
-	// write the whole body at once
-	// err := ioutil.WriteFile("profils.txt", []byte(t), 0644)
-	// if err != nil {
-	// 	panic(err)
-	// }
 	return string(b)
 }
