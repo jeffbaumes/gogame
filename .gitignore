@@ -1,4 +1,6 @@
 main
+options.txt
+profiles.txt
 *.db
 .DS_Store
 textures.png

@@ -65,30 +65,85 @@ var (
 	guistart   = time.Now()
 )
 
+func keyCallbackInventory(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
+	if action != glfw.Press {
+		return
+	}
+	player := universe.Player
+	slot := -1
+	m := op.OptionMap
+	switch key {
+	case m["Slot1"].Key:
+		slot = 0
+	case m["Slot2"].Key:
+		slot = 1
+	case m["Slot3"].Key:
+		slot = 2
+	case m["Slot4"].Key:
+		slot = 3
+	case m["Slot5"].Key:
+		slot = 4
+	case m["Slot6"].Key:
+		slot = 5
+	case m["Slot7"].Key:
+		slot = 6
+	case m["Slot8"].Key:
+		slot = 7
+	case m["Slot9"].Key:
+		slot = 8
+	case m["Slot10"].Key:
+		slot = 9
+	case m["Slot11"].Key:
+		slot = 10
+	case m["Slot12"].Key:
+		slot = 11
+	}
+	if slot < 0 {
+		return
+	}
+	xpos, ypos := w.GetCursorPos()
+	winw, winh := w.GetSize()
+	aspect := float32(winw) / float32(winh)
+	for m := range common.Materials {
+		sz := float32(0.03)
+		px := 1.25 * 2 * sz * (float32(m) - float32(len(common.Materials))/2)
+		py := 1 - 0.25*aspect
+		scale := sz
+		xMin, yMin := glToPixel(w, float64(px-scale), float64(py+scale*aspect))
+		xMax, yMax := glToPixel(w, float64(px+scale), float64(py-scale*aspect))
+		if float64(xpos) >= xMin && float64(xpos) <= xMax && float64(ypos) >= yMin && float64(ypos) <= yMax {
+			player.Hotbar[slot] = m
+		}
+	}
+}
+
 func keyCallbackPlay(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
 	player := universe.Player
+	planet := player.Planet
+	planetRen := universe.PlanetMap[planet.ID]
+	m := op.OptionMap
 	switch action {
 	case glfw.Press:
 		switch key {
 		case glfw.KeyEscape:
 			player.Mode = "Options"
 			w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
-		case op.InSky:
+		case m["Apex"].Key:
 			player.Mode = "Apex"
-		case op.OpText:
+		case m["Text"].Key:
 			player.Mode = "Text"
-		case op.Inventory:
+		case m["Inventory"].Key:
 			player.Mode = "Inventory"
 			w.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
-		case op.Forwards:
+		case m["Forward"].Key:
 			player.ForwardVel = player.WalkVel
-		case op.Backwards:
+		case m["Backward"].Key:
 			player.BackVel = player.WalkVel
-		case op.Right:
+		case m["Right"].Key:
 			player.RightVel = player.WalkVel
-		case op.Left:
+		case m["Left"].Key:
 			player.LeftVel = player.WalkVel
-		case op.Mode:
+		case m["Mode"].Key:
 			player.GameMode++
 			if player.GameMode >= common.NumGameModes {
 				player.GameMode = 0
@@ -96,14 +151,31 @@ func keyCallbackPlay(w *glfw.Window, key glfw.Key, scancode int, action glfw.Act
 			if player.GameMode == common.Flying {
 				player.FallVel = 0
 			}
-		case op.PlanetR:
-			id := player.Planet.ID + 1
-			if universe.PlanetMap[id] == nil {
-				id = 0
-			}
-			player.Planet = universe.PlanetMap[id].Planet
-			player.Spawn()
-		case op.Up:
+		case m["Slot1"].Key:
+			player.ActiveHotBarSlot = 0
+		case m["Slot2"].Key:
+			player.ActiveHotBarSlot = 1
+		case m["Slot3"].Key:
+			player.ActiveHotBarSlot = 2
+		case m["Slot4"].Key:
+			player.ActiveHotBarSlot = 3
+		case m["Slot5"].Key:
+			player.ActiveHotBarSlot = 4
+		case m["Slot6"].Key:
+			player.ActiveHotBarSlot = 5
+		case m["Slot7"].Key:
+			player.ActiveHotBarSlot = 6
+		case m["Slot8"].Key:
+			player.ActiveHotBarSlot = 7
+		case m["Slot9"].Key:
+			player.ActiveHotBarSlot = 8
+		case m["Slot10"].Key:
+			player.ActiveHotBarSlot = 9
+		case m["Slot11"].Key:
+			player.ActiveHotBarSlot = 10
+		case m["Slot12"].Key:
+			player.ActiveHotBarSlot = 11
+		case m["Up"].Key:
 			if cursorGrabbed(w) {
 				if player.GameMode == common.Normal {
 					player.HoldingJump = true
@@ -111,11 +183,18 @@ func keyCallbackPlay(w *glfw.Window, key glfw.Key, scancode int, action glfw.Act
 					player.UpVel = player.WalkVel
 				}
 			}
-		case op.Down:
+		case m["Down"].Key:
 			if cursorGrabbed(w) && player.GameMode == common.Flying {
 				player.DownVel = player.WalkVel
 			}
-		case op.PlanetL:
+		case m["PlanetR"].Key:
+			id := player.Planet.ID + 1
+			if universe.PlanetMap[id] == nil {
+				id = 0
+			}
+			player.Planet = universe.PlanetMap[id].Planet
+			player.Spawn()
+		case m["PlanetL"].Key:
 			id := player.Planet.ID - 1
 			if universe.PlanetMap[id] == nil {
 				if id < 0 {
@@ -128,57 +207,7 @@ func keyCallbackPlay(w *glfw.Window, key glfw.Key, scancode int, action glfw.Act
 			}
 			player.Planet = universe.PlanetMap[id].Planet
 			player.Spawn()
-		}
-	case glfw.Release:
-		switch key {
-		case op.Up:
-			player.HoldingJump = false
-			player.UpVel = 0
-		case op.Down:
-			player.DownVel = 0
-		case op.Forwards:
-			player.ForwardVel = 0
-		case op.Backwards:
-			player.BackVel = 0
-		case op.Right:
-			player.RightVel = 0
-		case op.Left:
-			player.LeftVel = 0
-		}
-	}
-}
-
-func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
-	player := universe.Player
-	guikeycallback := screen.KeyCallBack()
-	m := player.Mode
-	if m == "Play" {
-		keyCallbackPlay(w, key, scancode, action, mods)
-	} else {
-		if action == glfw.Press && key == glfw.KeyEscape {
-			player.Mode = "Play"
-			w.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
-		} else if m == "Inventory" || m == "Text" || m == "Options" {
-			guikeycallback(w, key, scancode, action, mods)
-		}
-	}
-}
-
-func windowSizeCallback(w *glfw.Window, wd, ht int) {
-	fwidth, fheight := scene.FramebufferSize(w)
-	gl.Viewport(0, 0, int32(fwidth), int32(fheight))
-}
-
-func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
-	player := universe.Player
-	planet := player.Planet
-
-	guimousebuttoncallback := screen.MouseButtonCallback()
-	planetRen := universe.PlanetMap[planet.ID]
-	// keyCallbackPlay(w, glfw.Key(button), 0, action, mods)
-	guimousebuttoncallback(w, button, action, mods)
-	if cursorGrabbed(w) {
-		if action == glfw.Press && button == glfw.MouseButtonLeft {
+		case m["Destroy"].Key:
 			increment := player.LookDir().Mul(0.05)
 			pos := player.Location()
 			for i := 0; i < 100; i++ {
@@ -203,7 +232,7 @@ func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Ac
 					break
 				}
 			}
-		} else if action == glfw.Press && button == glfw.MouseButtonRight {
+		case m["Build"].Key:
 			increment := player.LookDir().Mul(0.05)
 			pos := player.Location()
 			prevCellIndex := common.CellIndex{Lon: -1, Lat: -1, Alt: -1}
@@ -224,10 +253,122 @@ func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Ac
 				}
 			}
 		}
+	case glfw.Release:
+		switch key {
+		case m["Up"].Key:
+			player.HoldingJump = false
+			player.UpVel = 0
+		case m["Down"].Key:
+			player.DownVel = 0
+		case m["Forward"].Key:
+			player.ForwardVel = 0
+		case m["Backward"].Key:
+			player.BackVel = 0
+		case m["Right"].Key:
+			player.RightVel = 0
+		case m["Left"].Key:
+			player.LeftVel = 0
+		}
+	}
+}
+
+func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
+	player := universe.Player
+	guikeycallback := screen.KeyCallBack()
+	m := player.Mode
+	if m == "Play" {
+		keyCallbackPlay(w, key, scancode, action, mods)
+	} else {
+		if action == glfw.Press && key == glfw.KeyEscape {
+			player.Mode = "Play"
+			w.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
+		} else if m == "Inventory" {
+			keyCallbackInventory(w, key, scancode, action, mods)
+		} else if m == "Text" || m == "Options" {
+			guikeycallback(w, key, scancode, action, mods)
+		}
+	}
+}
+
+func windowSizeCallback(w *glfw.Window, wd, ht int) {
+	fwidth, fheight := scene.FramebufferSize(w)
+	gl.Viewport(0, 0, int32(fwidth), int32(fheight))
+}
+
+func mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
+	player := universe.Player
+	guimousebuttoncallback := screen.MouseButtonCallback()
+	m := player.Mode
+	if m == "Play" {
+		keyCallbackPlay(w, glfw.Key(button), 0, action, mods)
 	} else {
 		if action == glfw.Press && player.Mode != "Options" {
 			player.Mode = "Play"
 			w.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
+		} else if m == "Inventory" || m == "Text" || m == "Options" {
+			guimousebuttoncallback(w, button, action, mods)
 		}
 	}
 }
+
+// 	player := universe.Player
+// 	planet := player.Planet
+
+// 	guimousebuttoncallback := screen.MouseButtonCallback()
+// 	planetRen := universe.PlanetMap[planet.ID]
+// 	// keyCallbackPlay(w, glfw.Key(button), 0, action, mods)
+// 	guimousebuttoncallback(w, button, action, mods)
+// 	if cursorGrabbed(w) {
+// 		if action == glfw.Press && button == glfw.MouseButtonLeft {
+// 			increment := player.LookDir().Mul(0.05)
+// 			pos := player.Location()
+// 			for i := 0; i < 100; i++ {
+// 				pos = pos.Add(increment)
+// 				cell := planet.CartesianToCell(pos)
+// 				hitPlayer := false
+// 				for _, otherPlayer := range universe.ConnectedPeople {
+// 					if pos.Sub(otherPlayer.Position).Len() < 0.6 {
+// 						log.Println(fmt.Sprintf("Hit %v", otherPlayer.Name))
+// 						var ret bool
+// 						universe.RPC.Go("API.HitPlayer", common.HitPlayerArgs{From: player.Name, Target: otherPlayer.Name, Amount: 1}, &ret, nil)
+// 						hitPlayer = true
+// 						break
+// 					}
+// 				}
+// 				if hitPlayer {
+// 					break
+// 				}
+// 				if cell != nil && cell.Material != common.Air {
+// 					cellIndex := planet.CartesianToCellIndex(pos)
+// 					planetRen.SetCellMaterial(cellIndex, common.Air, true)
+// 					break
+// 				}
+// 			}
+// 		} else if action == glfw.Press && button == glfw.MouseButtonRight {
+// 			increment := player.LookDir().Mul(0.05)
+// 			pos := player.Location()
+// 			prevCellIndex := common.CellIndex{Lon: -1, Lat: -1, Alt: -1}
+// 			cellIndex := common.CellIndex{}
+// 			for i := 0; i < 100; i++ {
+// 				pos = pos.Add(increment)
+// 				nextCellIndex := planet.CartesianToCellIndex(pos)
+// 				if nextCellIndex != cellIndex {
+// 					prevCellIndex = cellIndex
+// 					cellIndex = nextCellIndex
+// 					cell := planet.CellIndexToCell(cellIndex)
+// 					if cell != nil && cell.Material != common.Air {
+// 						if prevCellIndex.Lon != -1 {
+// 							planetRen.SetCellMaterial(prevCellIndex, player.Hotbar[player.ActiveHotBarSlot], true)
+// 						}
+// 						break
+// 					}
+// 				}
+// 			}
+// 		}
+// 	} else {
+// 		if action == glfw.Press && player.Mode != "Options" {
+// 			player.Mode = "Play"
+// 			w.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
+// 		}
+// 	}
+// }
