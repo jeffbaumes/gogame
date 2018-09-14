@@ -6,7 +6,7 @@ import (
 
 	"github.com/anbcodes/goguigl/gui"
 	"github.com/go-gl/mathgl/mgl32"
-	"github.com/jeffbaumes/gogame/pkg/common"
+	"github.com/jeffbaumes/buildorb/pkg/common"
 )
 
 // Text holds the text information

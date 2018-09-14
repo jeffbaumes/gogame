@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/go-gl/mathgl/mgl32"
-	"github.com/jeffbaumes/gogame/pkg/common"
+	"github.com/jeffbaumes/buildorb/pkg/common"
 )
 
 // LoadTextures loads textures from the textures directory into a single texture image

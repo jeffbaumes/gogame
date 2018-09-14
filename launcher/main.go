@@ -12,8 +12,8 @@ import (
 	"github.com/anbcodes/goguigl/gui"
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
-	"github.com/jeffbaumes/gogame/pkg/client"
-	"github.com/jeffbaumes/gogame/pkg/server"
+	"github.com/jeffbaumes/buildorb/pkg/client"
+	"github.com/jeffbaumes/buildorb/pkg/server"
 )
 
 type profile struct {
@@ -79,7 +79,7 @@ func main() {
 	profiles := getprofiles()
 	ui := ui{}
 	runtime.LockOSThread()
-	w := gui.InitGlfw(700, 500, "World Blocks")
+	w := gui.InitGlfw(700, 500, "BUILDORB")
 	gui.InitOpenGL()
 	w.SetSizeCallback(windowSizeCallback)
 	screen := gui.NewScreen(w)
@@ -90,8 +90,8 @@ func main() {
 	w.SetMouseButtonCallback(guimousebuttoncallback)
 	w.SetCursorPosCallback(guicursorposcallback)
 	w.SetKeyCallback(guikeycallback)
-	play := gui.NewButton(screen, "PLAY", -0.85, 0.6, 0.85, 0.3, 0.1, nil)
-	serverb := gui.NewButton(screen, "PLAY ON SERVER", 0.05, 0.6, 0.85, 0.3, 0.1, nil)
+	play := gui.NewButton(screen, "Play", -0.85, 0.6, 0.85, 0.3, 0.05, nil)
+	serverb := gui.NewButton(screen, "Multiplayer", 0.05, 0.6, 0.85, 0.3, 0.05, nil)
 	namee := gui.NewEntry(screen, "", -0.55, 0.2, 0.5, 0.2, 0.05, nil)
 	gui.NewLabel(screen, "Name", -0.41, 0.45, 0.1)
 	worlde := gui.NewEntry(screen, "", 0.05, 0.2, 0.5, 0.2, 0.05, nil)
@@ -108,7 +108,11 @@ func main() {
 		namee.Text = profiles[ui.profile].name
 		worlde.Text = profiles[ui.profile].world
 		porte.Text = fmt.Sprintf("%v", profiles[ui.profile].port)
-		defaulte.Text = fmt.Sprintf("default = %v", profiles[ui.profile].normal)
+		defaultStr := "NO"
+		if profiles[ui.profile].normal {
+			defaultStr = "YES"
+		}
+		defaulte.Text = fmt.Sprintf("Default: %v", defaultStr)
 		hoste.Text = profiles[ui.profile].host
 	}
 

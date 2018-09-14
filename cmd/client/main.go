@@ -10,7 +10,7 @@ import (
 	// Uncomment for profiling
 	// _ "net/http/pprof"
 
-	"github.com/jeffbaumes/gogame/pkg/client"
+	"github.com/jeffbaumes/buildorb/pkg/client"
 )
 
 func main() {

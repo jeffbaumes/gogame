@@ -7,7 +7,7 @@ seedd = 1
 named = "andrew"
 cportd = 5555
 hostd = "localhost"
-# print('./gogame {} {} {} {} {} {} {}'.format(world, port, seed, "1", "2", "3", "server"))
+# print('./buildorb {} {} {} {} {} {} {}'.format(world, port, seed, "1", "2", "3", "server"))
 def ssumit():
     global worldd
     global portd
@@ -26,7 +26,7 @@ def ssumit():
         seedd = seedst
     # print(worlds, ports, seeds)
     root.destroy()
-    os.system('./gogame {} {} {} {} {} {} {}'.format(worldd, portd, seedd, "1", "2", "3", "server"))
+    os.system('./buildorb {} {} {} {} {} {} {}'.format(worldd, portd, seedd, "1", "2", "3", "server"))
 def csumit():
     global worldd
     global portd
@@ -45,7 +45,7 @@ def csumit():
         hostd = hostst
     # print(worlds, ports, seeds)
     root.destroy()
-    os.system('./gogame {} {} {} {} {} {} {}'.format("1", "1", "1", named, hostd, cportd, "server"))
+    os.system('./buildorb {} {} {} {} {} {} {}'.format("1", "1", "1", named, hostd, cportd, "server"))
 def bsumit():
     global worldd
     global portd
@@ -72,7 +72,7 @@ def bsumit():
     if hostst != "":
         hostd = hostst
     root.destroy()
-    os.system('./gogame {} {} {} {} {} {} {}'.format(worldd, portd, seedd, named, hostd, cportd, "all"))
+    os.system('./buildorb {} {} {} {} {} {} {}'.format(worldd, portd, seedd, named, hostd, cportd, "all"))
 def server():
     global world
     global port

@@ -5,7 +5,7 @@ import (
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
-	"github.com/jeffbaumes/gogame/pkg/common"
+	"github.com/jeffbaumes/buildorb/pkg/common"
 )
 
 type chunkRenderer struct {

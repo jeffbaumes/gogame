@@ -4,7 +4,7 @@ import (
 	"errors"
 	"log"
 
-	"github.com/jeffbaumes/gogame/pkg/common"
+	"github.com/jeffbaumes/buildorb/pkg/common"
 )
 
 // API is the RPC tag for server calls

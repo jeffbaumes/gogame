@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/jeffbaumes/gogame/pkg/scene"
+	"github.com/jeffbaumes/buildorb/pkg/scene"
 )
 
 func main() {

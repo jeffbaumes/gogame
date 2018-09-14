@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jeffbaumes/gogame/pkg/server"
+	"github.com/jeffbaumes/buildorb/pkg/server"
 )
 
 func main() {

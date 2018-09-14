@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/yamux"
-	"github.com/jeffbaumes/gogame/pkg/common"
+	"github.com/jeffbaumes/buildorb/pkg/common"
 	_ "github.com/mattn/go-sqlite3" // Needed to use sqlite
 )
 
@@ -25,7 +25,7 @@ type server struct {
 
 func writefile(t string) {
 
-	err := ioutil.WriteFile("server.gogame", []byte(t), 0644)
+	err := ioutil.WriteFile("server.buildorb", []byte(t), 0644)
 	if err != nil {
 		panic(err)
 	}
@@ -33,9 +33,9 @@ func writefile(t string) {
 func readfile() string {
 
 	// read the whole file at once
-	b, err := ioutil.ReadFile("server.gogame")
+	b, err := ioutil.ReadFile("server.buildorb")
 	if err != nil {
-		os.Create("server.gogame")
+		os.Create("server.buildorb")
 		return readfile()
 	}
 	// write the whole body at once

@@ -9,7 +9,7 @@ import (
 
 	"github.com/anbcodes/goguigl/gui"
 	"github.com/go-gl/glfw/v3.2/glfw"
-	"github.com/jeffbaumes/gogame/pkg/common"
+	"github.com/jeffbaumes/buildorb/pkg/common"
 )
 
 // Option holds the information for a key binding option

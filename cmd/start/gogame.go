@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jeffbaumes/gogame/pkg/client"
-	"github.com/jeffbaumes/gogame/pkg/server"
+	"github.com/jeffbaumes/buildorb/pkg/client"
+	"github.com/jeffbaumes/buildorb/pkg/server"
 )
 
 func main() {

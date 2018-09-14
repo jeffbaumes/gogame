@@ -26,7 +26,7 @@ func NewUniverse(db *sql.DB, systemType string) *Universe {
 	if len(planetStates) == 0 {
 		systemGen := systems[systemType]
 		if systemGen == nil {
-			systemGen = systems["planet"]
+			systemGen = systems["many"]
 		}
 		planetStates = systemGen()
 		for _, state := range planetStates {
