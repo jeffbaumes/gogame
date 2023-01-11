@@ -1,5 +1,5 @@
 # gogame
-Minecraft in Go with planets
+Voxel engine in Go with planets
 
 ## Features
 * World editing
